@@ -131,12 +131,26 @@ app.use('/admin', adminRoutes);
 
 
 
-// 主页重定向
+// 视图路由
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
 
-app.get('/', (req, res) => {
+app.get('/kitchen', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'kitchen.html'));
+});
 
+app.get('/customer', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
+app.get('/payment', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'aa-payment.html'));
+});
+
+// 主页重定向
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 
