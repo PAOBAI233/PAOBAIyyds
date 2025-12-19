@@ -119,19 +119,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 
 
-// 路由配置
-
-app.use('/api', apiRoutes);
-
-app.use('/customer', customerRoutes);
-
-app.use('/kitchen', kitchenRoutes);
-
-app.use('/admin', adminRoutes);
-
-
-
-// 视图路由
+// 视图路由 - 必须放在API路由之前
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
@@ -152,6 +140,14 @@ app.get('/payment', (req, res) => {
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// API路由配置
+app.use('/api', apiRoutes);
+
+// 注意：视图路由已经处理了根路径，API路由使用不同的路径前缀
+app.use('/customer/api', customerRoutes);
+app.use('/kitchen/api', kitchenRoutes);
+app.use('/admin/api', adminRoutes);
 
 
 
