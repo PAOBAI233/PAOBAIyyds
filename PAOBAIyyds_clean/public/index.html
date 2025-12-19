@@ -1,0 +1,656 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>范式转换智能点餐系统</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css">
+    <style>
+        :root {
+            --primary: #c41d1d;
+            --primary-light: #ff6b6b;
+            --primary-dark: #a81a1a;
+        }
+        
+        .primary-bg {
+            background: var(--primary);
+        }
+        
+        .primary-text {
+            color: var(--primary);
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            border-color: var(--primary-dark);
+        }
+        
+        .food-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .food-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .badge-hot {
+            background: #ef4444;
+        }
+        
+        .badge-new {
+            background: #10b981;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-up {
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 顶部导航 -->
+    <header class="fixed top-0 left-0 right-0 bg-white shadow-md z-40">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <img src="https://paobai.cn/images/LOGO.png" alt="Logo" class="h-10">
+                    <h1 class="text-xl font-bold primary-text">智能点餐</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div id="tableInfo" class="text-sm text-gray-600">
+                        <i class="ri-restaurant-line"></i>
+                        <span id="tableName">请扫码</span>
+                    </div>
+                    <div id="sessionInfo" class="text-sm text-gray-600 hidden">
+                        <i class="ri-team-line"></i>
+                        <span id="customerCount">0</span>人
+                    </div>
+                    <button id="cartBtn" class="relative btn-primary text-white px-4 py-2 rounded-lg">
+                        <i class="ri-shopping-cart-line"></i>
+                        <span id="cartCount" class="ml-1">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区域 -->
+    <main class="pt-16 pb-20">
+        <!-- 欢迎页面 -->
+        <section id="welcomePage" class="min-h-screen flex items-center justify-center">
+            <div class="text-center">
+                <div class="mb-8">
+                    <i class="ri-qr-scan-2-line text-6xl primary-text"></i>
+                </div>
+                <h2 class="text-3xl font-bold mb-4">扫码开始点餐</h2>
+                <p class="text-gray-600 mb-8">请扫描桌台二维码进入点餐界面</p>
+                <div class="loading-spinner mx-auto" id="loadingSpinner"></div>
+            </div>
+        </section>
+
+        <!-- 点餐界面 -->
+        <section id="orderingPage" class="hidden">
+            <!-- 分类导航 -->
+            <div class="sticky top-16 bg-white border-b z-30">
+                <div class="container mx-auto px-4">
+                    <div id="categoryTabs" class="flex space-x-6 overflow-x-auto py-4">
+                        <!-- 分类标签动态生成 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 菜品列表 -->
+            <div class="container mx-auto px-4 py-6">
+                <div id="menuItems" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- 菜品卡片动态生成 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 购物车侧边栏 -->
+        <div id="cartSidebar" class="fixed right-0 top-16 bottom-0 w-80 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 z-50">
+            <div class="flex flex-col h-full">
+                <div class="flex items-center justify-between p-4 border-b">
+                    <h3 class="text-lg font-bold">购物车</h3>
+                    <button id="closeCart" class="text-gray-500 hover:text-gray-700">
+                        <i class="ri-close-line text-xl"></i>
+                    </button>
+                </div>
+                
+                <div id="cartItems" class="flex-1 overflow-y-auto p-4">
+                    <!-- 购物车项目动态生成 -->
+                </div>
+                
+                <div class="border-t p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="font-bold">总计：</span>
+                        <span id="cartTotal" class="text-xl font-bold primary-text">¥0</span>
+                    </div>
+                    <div class="mb-4">
+                        <textarea id="orderNote" class="w-full p-2 border rounded-lg" rows="2" placeholder="特殊要求（可选）"></textarea>
+                    </div>
+                    <button id="submitOrder" class="w-full btn-primary text-white py-3 rounded-lg font-bold">
+                        提交订单
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 订单确认弹窗 -->
+    <div id="orderConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 slide-up">
+            <h3 class="text-xl font-bold mb-4">订单确认</h3>
+            <div id="confirmOrderDetails" class="mb-4">
+                <!-- 订单详情动态生成 -->
+            </div>
+            <div class="flex space-x-4">
+                <button id="cancelOrder" class="flex-1 border border-gray-300 py-2 rounded-lg">
+                    取消
+                </button>
+                <button id="confirmOrder" class="flex-1 btn-primary text-white py-2 rounded-lg">
+                    确认下单
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div id="toast" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-lg hidden z-50">
+        <span id="toastMessage"></span>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // 全局状态管理
+        const state = {
+            currentTable: null,
+            currentSession: null,
+            currentUser: null,
+            categories: [],
+            menuItems: [],
+            cart: [],
+            socket: null
+        };
+
+        // DOM 元素
+        const elements = {
+            welcomePage: document.getElementById('welcomePage'),
+            orderingPage: document.getElementById('orderingPage'),
+            tableInfo: document.getElementById('tableInfo'),
+            tableName: document.getElementById('tableName'),
+            sessionInfo: document.getElementById('sessionInfo'),
+            customerCount: document.getElementById('customerCount'),
+            cartBtn: document.getElementById('cartBtn'),
+            cartCount: document.getElementById('cartCount'),
+            categoryTabs: document.getElementById('categoryTabs'),
+            menuItems: document.getElementById('menuItems'),
+            cartSidebar: document.getElementById('cartSidebar'),
+            closeCart: document.getElementById('closeCart'),
+            cartItems: document.getElementById('cartItems'),
+            cartTotal: document.getElementById('cartTotal'),
+            orderNote: document.getElementById('orderNote'),
+            submitOrder: document.getElementById('submitOrder'),
+            orderConfirmModal: document.getElementById('orderConfirmModal'),
+            confirmOrderDetails: document.getElementById('confirmOrderDetails'),
+            cancelOrder: document.getElementById('cancelOrder'),
+            confirmOrder: document.getElementById('confirmOrder'),
+            toast: document.getElementById('toast'),
+            toastMessage: document.getElementById('toastMessage'),
+            loadingSpinner: document.getElementById('loadingSpinner')
+        };
+
+        // 工具函数
+        function formatPrice(price) {
+            return `¥${parseFloat(price).toFixed(2)}`;
+        }
+
+        function showToast(message, type = 'info') {
+            elements.toastMessage.textContent = message;
+            elements.toast.className = `fixed bottom-20 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg z-50 ${
+                type === 'success' ? 'bg-green-500' : 
+                type === 'error' ? 'bg-red-500' : 'bg-gray-800'
+            } text-white`;
+            elements.toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                elements.toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        // API 调用函数
+        async function apiCall(url, options = {}) {
+            try {
+                const response = await fetch(`/api${url}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.message);
+                }
+                
+                return data;
+            } catch (error) {
+                console.error(`API调用失败 [${url}]:`, error);
+                
+                // 网络错误特殊处理
+                if (error.message.includes('Failed to fetch')) {
+                    showToast('网络连接失败，请检查网络', 'error');
+                } else {
+                    showToast(error.message || '请求失败', 'error');
+                }
+                
+                throw error;
+            }
+        }
+
+        // 解析URL参数获取桌台二维码
+        function getTableQrCode() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('qr') || urlParams.get('table');
+        }
+
+        // 获取桌台信息
+        async function loadTableInfo(qrCode) {
+            try {
+                const data = await apiCall(`/tables/qr/${qrCode}`);
+                state.currentTable = data.data;
+                elements.tableName.textContent = state.currentTable.table_name || state.currentTable.table_number;
+                return true;
+            } catch (error) {
+                console.error('获取桌台信息失败:', error);
+                return false;
+            }
+        }
+
+        // 创建或加入会话
+        async function createOrJoinSession(qrCode) {
+            try {
+                // 尝试加入现有会话
+                const tableData = await apiCall(`/tables/qr/${qrCode}`);
+                
+                if (tableData.data) {
+                    // 如果桌台可用，创建新会话
+                    const sessionData = await apiCall('/sessions', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            table_id: tableData.data.id,
+                            leader_info: {
+                                openid: `customer_${Date.now()}`,
+                                nickname: '顾客'
+                            },
+                            total_customers: 1
+                        })
+                    });
+                    
+                    state.currentSession = sessionData.data;
+                    state.currentUser = sessionData.data.leader_info;
+                    
+                    // 连接Socket
+                    connectSocket();
+                    
+                    return true;
+                }
+            } catch (error) {
+                console.error('创建会话失败:', error);
+                return false;
+            }
+        }
+
+        // 连接Socket
+        function connectSocket() {
+            if (!state.currentSession) return;
+            
+            state.socket = io();
+            
+            state.socket.emit('join_session', state.currentSession.session_id);
+            
+            state.socket.on('order_status_update', (data) => {
+                showToast(`订单状态更新: ${data.status}`, 'info');
+            });
+            
+            state.socket.on('payment_status_update', (data) => {
+                showToast(`支付状态更新: ${data.status}`, 'info');
+            });
+            
+            state.socket.on('user_offline', (data) => {
+                showToast('有用户离线', 'info');
+            });
+        }
+
+        // 加载分类
+        async function loadCategories() {
+            try {
+                const data = await apiCall('/menu/categories');
+                state.categories = data.data;
+                renderCategories();
+            } catch (error) {
+                console.error('加载分类失败:', error);
+            }
+        }
+
+        // 渲染分类标签
+        function renderCategories() {
+            elements.categoryTabs.innerHTML = state.categories.map((category, index) => `
+                <button 
+                    class="category-tab px-4 py-2 rounded-lg whitespace-nowrap ${
+                        index === 0 ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }"
+                    data-category-id="${category.id}"
+                >
+                    ${category.name}
+                </button>
+            `).join('');
+            
+            // 绑定点击事件
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.category-tab').forEach(t => {
+                        t.classList.remove('bg-primary', 'text-white');
+                        t.classList.add('bg-gray-100', 'text-gray-700');
+                    });
+                    this.classList.remove('bg-gray-100', 'text-gray-700');
+                    this.classList.add('bg-primary', 'text-white');
+                    
+                    loadMenuItems(this.dataset.categoryId);
+                });
+            });
+            
+            // 加载第一个分类的菜品
+            if (state.categories.length > 0) {
+                loadMenuItems(state.categories[0].id);
+            }
+        }
+
+        // 加载菜品
+        async function loadMenuItems(categoryId) {
+            try {
+                const data = await apiCall(`/menu/items?category_id=${categoryId}&limit=100`);
+                state.menuItems = data.data.items;
+                renderMenuItems();
+            } catch (error) {
+                console.error('加载菜品失败:', error);
+            }
+        }
+
+        // 渲染菜品卡片
+        function renderMenuItems() {
+            elements.menuItems.innerHTML = state.menuItems.map(item => `
+                <div class="food-card bg-white rounded-lg overflow-hidden shadow-md cursor-pointer fade-in">
+                    <div class="relative">
+                        ${item.image_url ? 
+                            `<img src="${item.image_url}" alt="${item.name}" class="w-full h-32 object-cover">` :
+                            `<div class="w-full h-32 bg-gray-200 flex items-center justify-center">
+                                <i class="ri-restaurant-line text-3xl text-gray-400"></i>
+                            </div>`
+                        }
+                        ${item.is_special ? '<span class="badge-hot absolute top-2 right-2 text-white text-xs px-2 py-1 rounded">特色</span>' : ''}
+                    </div>
+                    <div class="p-4">
+                        <h4 class="font-bold text-gray-800 mb-2">${item.name}</h4>
+                        <p class="text-gray-600 text-sm mb-3 line-clamp-2">${item.description || ''}</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-red-500 font-bold">${formatPrice(item.price)}</span>
+                            <button 
+                                class="btn-primary text-white px-3 py-1 rounded-lg text-sm"
+                                onclick="addToCart(${item.id})"
+                            >
+                                <i class="ri-add-line"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 添加到购物车
+        function addToCart(itemId) {
+            const menuItem = state.menuItems.find(item => item.id === itemId);
+            if (!menuItem) return;
+            
+            const existingItem = state.cart.find(item => item.menu_item_id === itemId);
+            
+            if (existingItem) {
+                existingItem.quantity += 1;
+                existingItem.subtotal = existingItem.price * existingItem.quantity;
+            } else {
+                state.cart.push({
+                    menu_item_id: itemId,
+                    item_name: menuItem.name,
+                    price: menuItem.price,
+                    quantity: 1,
+                    subtotal: menuItem.price,
+                    special_instructions: ''
+                });
+            }
+            
+            updateCart();
+            showToast('已添加到购物车', 'success');
+        }
+
+        // 更新购物车显示
+        function updateCart() {
+            const totalItems = state.cart.reduce((sum, item) => sum + item.quantity, 0);
+            const totalPrice = state.cart.reduce((sum, item) => sum + item.subtotal, 0);
+            
+            elements.cartCount.textContent = totalItems;
+            elements.cartTotal.textContent = formatPrice(totalPrice);
+            
+            if (state.cart.length === 0) {
+                elements.cartItems.innerHTML = '<p class="text-gray-500 text-center">购物车为空</p>';
+            } else {
+                elements.cartItems.innerHTML = state.cart.map((item, index) => `
+                    <div class="flex items-center justify-between mb-4 p-3 bg-gray-50 rounded-lg">
+                        <div class="flex-1">
+                            <h5 class="font-bold">${item.item_name}</h5>
+                            <p class="text-gray-600">${formatPrice(item.price)} x ${item.quantity}</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="updateCartItem(${index}, -1)" class="text-gray-500 hover:text-gray-700">
+                                <i class="ri-subtract-line"></i>
+                            </button>
+                            <span class="font-bold">${item.quantity}</span>
+                            <button onclick="updateCartItem(${index}, 1)" class="text-gray-500 hover:text-gray-700">
+                                <i class="ri-add-line"></i>
+                            </button>
+                            <button onclick="removeFromCart(${index})" class="text-red-500 hover:text-red-700 ml-2">
+                                <i class="ri-delete-bin-line"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // 更新购物车项目
+        function updateCartItem(index, change) {
+            const item = state.cart[index];
+            item.quantity += change;
+            
+            if (item.quantity <= 0) {
+                removeFromCart(index);
+            } else {
+                item.subtotal = item.price * item.quantity;
+                updateCart();
+            }
+        }
+
+        // 从购物车移除
+        function removeFromCart(index) {
+            state.cart.splice(index, 1);
+            updateCart();
+        }
+
+        // 显示订单确认
+        function showOrderConfirm() {
+            if (state.cart.length === 0) {
+                showToast('购物车为空', 'error');
+                return;
+            }
+            
+            const totalPrice = state.cart.reduce((sum, item) => sum + item.subtotal, 0);
+            
+            elements.confirmOrderDetails.innerHTML = `
+                <div class="space-y-2">
+                    ${state.cart.map(item => `
+                        <div class="flex justify-between">
+                            <span>${item.item_name} x ${item.quantity}</span>
+                            <span>${formatPrice(item.subtotal)}</span>
+                        </div>
+                    `).join('')}
+                    <div class="border-t pt-2">
+                        <div class="flex justify-between font-bold">
+                            <span>总计</span>
+                            <span class="primary-text">${formatPrice(totalPrice)}</span>
+                        </div>
+                    </div>
+                    ${elements.orderNote.value ? `
+                        <div class="bg-gray-50 p-2 rounded">
+                            <small class="text-gray-600">备注：${elements.orderNote.value}</small>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            elements.orderConfirmModal.classList.remove('hidden');
+        }
+
+        // 提交订单
+        async function submitOrder() {
+            if (state.cart.length === 0 || !state.currentSession) {
+                showToast('无法提交订单', 'error');
+                return;
+            }
+            
+            try {
+                const orderData = {
+                    session_id: state.currentSession.session_id,
+                    items: state.cart,
+                    special_requests: elements.orderNote.value,
+                    diner_openid: state.currentUser.openid
+                };
+                
+                const data = await apiCall('/orders', {
+                    method: 'POST',
+                    body: JSON.stringify(orderData)
+                });
+                
+                // 清空购物车
+                state.cart = [];
+                updateCart();
+                
+                // 关闭弹窗
+                elements.orderConfirmModal.classList.add('hidden');
+                elements.cartSidebar.classList.add('translate-x-full');
+                
+                showToast(`订单提交成功！订单号：${data.data.order.order_no}`, 'success');
+                
+            } catch (error) {
+                console.error('提交订单失败:', error);
+            }
+        }
+
+        // 事件绑定
+        elements.cartBtn.addEventListener('click', () => {
+            elements.cartSidebar.classList.toggle('translate-x-full');
+        });
+
+        elements.closeCart.addEventListener('click', () => {
+            elements.cartSidebar.classList.add('translate-x-full');
+        });
+
+        elements.submitOrder.addEventListener('click', showOrderConfirm);
+
+        elements.cancelOrder.addEventListener('click', () => {
+            elements.orderConfirmModal.classList.add('hidden');
+        });
+
+        elements.confirmOrder.addEventListener('click', submitOrder);
+
+        // 初始化应用
+        async function initApp() {
+            const qrCode = getTableQrCode();
+            
+            if (!qrCode) {
+                showToast('请扫描桌台二维码', 'error');
+                return;
+            }
+            
+            // 隐藏加载动画
+            elements.loadingSpinner.classList.add('hidden');
+            
+            // 获取桌台信息
+            const tableLoaded = await loadTableInfo(qrCode);
+            if (!tableLoaded) {
+                showToast('桌台信息获取失败', 'error');
+                return;
+            }
+            
+            // 创建会话
+            const sessionCreated = await createOrJoinSession(qrCode);
+            if (!sessionCreated) {
+                showToast('创建会话失败', 'error');
+                return;
+            }
+            
+            // 显示会话信息
+            elements.sessionInfo.classList.remove('hidden');
+            elements.customerCount.textContent = state.currentSession.total_customers;
+            
+            // 加载数据
+            await loadCategories();
+            
+            // 显示点餐界面
+            elements.welcomePage.classList.add('hidden');
+            elements.orderingPage.classList.remove('hidden');
+            
+            // 初始化购物车
+            updateCart();
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
+
