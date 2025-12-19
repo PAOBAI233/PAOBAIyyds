@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商家管理后台 - 范式转换智能点餐系统</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css">
+    <style>
+        :root {
+            --primary: #c41d1d;
+            --primary-light: #ff6b6b;
+            --primary-dark: #a81a1a;
+        }
+        
+        .admin-sidebar {
+            background: linear-gradient(180deg, var(--primary), var(--primary-dark));
+        }
+        
+        .nav-item {
+            transition: all 0.2s ease;
+        }
+        
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.2);
+            border-left: 4px solid white;
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        }
+        
+        .table-row:hover {
+            background: #f9fafb;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            border-color: var(--primary-dark);
+        }
+        
+        .form-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(196, 29, 29, 0.1);
+        }
+        
+        .modal {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+        }
+        
+        .status-available { background: #d1fae5; color: #065f46; }
+        .status-occupied { background: #fee2e2; color: #991b1b; }
+        .status-reserved { background: #fef3c7; color: #92400e; }
+        .status-cleaning { background: #e0e7ff; color: #3730a3; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen">
+        <!-- 侧边栏 -->
+        <aside class="admin-sidebar text-white w-64 flex-shrink-0">
+            <div class="p-6">
+                <div class="flex items-center space-x-3">
+                    <img src="https://paobai.cn/images/LOGO.png" alt="Logo" class="h-10">
+                    <div>
+                        <h1 class="text-xl font-bold">管理后台</h1>
+                        <p class="text-xs opacity-75">范式转换工作室</p>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="mt-6">
+                <a href="#" class="nav-item active block px-6 py-3 text-white" onclick="showSection('dashboard')">
+                    <i class="ri-dashboard-line mr-3"></i>
+                    数据总览
+                </a>
+                <a href="#" class="nav-item block px-6 py-3 text-white" onclick="showSection('tables')">
+                    <i class="ri-restaurant-line mr-3"></i>
+                    桌台管理
+                </a>
+                <a href="#" class="nav-item block px-6 py-3 text-white" onclick="showSection('categories')">
+                    <i class="ri-folder-line mr-3"></i>
+                    菜品分类
+                </a>
+                <a href="#" class="nav-item block px-6 py-3 text-white" onclick="showSection('menu')">
+                    <i class="ri-restaurant-menu-line mr-3"></i>
+                    菜品管理
+                </a>
+                <a href="#" class="nav-item block px-6 py-3 text-white" onclick="showSection('orders')">
+                    <i class="ri-file-list-3-line mr-3"></i>
+                    订单管理
+                </a>
+                <a href="#" class="nav-item block px-6 py-3 text-white" onclick="showSection('print')">
+                    <i class="ri-printer-line mr-3"></i>
+                    打印管理
+                </a>
+                <a href="#" class="nav-item block px-6 py-3 text-white" onclick="showSection('settings')">
+                    <i class="ri-settings-3-line mr-3"></i>
+                    系统设置
+                </a>
+            </nav>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="flex-1 overflow-auto">
+            <!-- 顶部栏 -->
+            <header class="bg-white shadow-sm border-b">
+                <div class="flex items-center justify-between px-6 py-4">
+                    <div class="flex items-center space-x-4">
+                        <h2 id="sectionTitle" class="text-xl font-bold">数据总览</h2>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button onclick="refreshCurrentSection()" class="text-gray-600 hover:text-gray-800">
+                            <i class="ri-refresh-line text-xl"></i>
+                        </button>
+                        <div class="text-sm text-gray-600">
+                            <i class="ri-time-line"></i>
+                            <span id="currentTime"></span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 内容区域 -->
+            <div class="p-6">
+                <!-- 数据总览 -->
+                <section id="dashboardSection" class="content-section">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                        <div class="stats-card text-white rounded-lg p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-white text-opacity-75 text-sm">今日订单</p>
+                                    <p class="text-3xl font-bold" id="todayOrders">0</p>
+                                </div>
+                                <i class="ri-file-list-3-line text-4xl text-white text-opacity-50"></i>
+                            </div>
+                        </div>
+                        <div class="bg-blue-500 text-white rounded-lg p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-white text-opacity-75 text-sm">今日营收</p>
+                                    <p class="text-3xl font-bold" id="todayRevenue">¥0</p>
+                                </div>
+                                <i class="ri-money-dollar-circle-line text-4xl text-white text-opacity-50"></i>
+                            </div>
+                        </div>
+                        <div class="bg-green-500 text-white rounded-lg p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-white text-opacity-75 text-sm">活跃桌台</p>
+                                    <p class="text-3xl font-bold" id="activeTables">0</p>
+                                </div>
+                                <i class="ri-restaurant-line text-4xl text-white text-opacity-50"></i>
+                            </div>
+                        </div>
+                        <div class="bg-purple-500 text-white rounded-lg p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-white text-opacity-75 text-sm">平均客单价</p>
+                                    <p class="text-3xl font-bold" id="avgOrder">¥0</p>
+                                </div>
+                                <i class="ri-bar-chart-line text-4xl text-white text-opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-lg font-bold mb-4">热销菜品</h3>
+                            <div id="popularItems" class="space-y-2">
+                                <!-- 热销菜品列表 -->
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-lg font-bold mb-4">分类统计</h3>
+                            <div id="categoryStats" class="space-y-2">
+                                <!-- 分类统计 -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 桌台管理 -->
+                <section id="tablesSection" class="content-section hidden">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-bold">桌台管理</h3>
+                        <button onclick="showTableModal()" class="btn-primary text-white px-4 py-2 rounded-lg">
+                            <i class="ri-add-line"></i> 添加桌台
+                        </button>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">桌台号</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">名称</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">容量</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">类型</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">当前人数</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablesList" class="bg-white divide-y divide-gray-200">
+                                <!-- 桌台列表 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 菜品分类 -->
+                <section id="categoriesSection" class="content-section hidden">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-bold">菜品分类</h3>
+                        <button onclick="showCategoryModal()" class="btn-primary text-white px-4 py-2 rounded-lg">
+                            <i class="ri-add-line"></i> 添加分类
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="categoriesList">
+                        <!-- 分类卡片 -->
+                    </div>
+                </section>
+
+                <!-- 菜品管理 -->
+                <section id="menuSection" class="content-section hidden">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-4">
+                            <h3 class="text-lg font-bold">菜品管理</h3>
+                            <select id="categoryFilter" onchange="loadMenuItems()" class="form-input px-3 py-2 border rounded-lg">
+                                <option value="">全部分类</option>
+                            </select>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="availableFilter" onchange="loadMenuItems()" class="mr-2">
+                                仅显示可售
+                            </label>
+                        </div>
+                        <button onclick="showMenuItemModal()" class="btn-primary text-white px-4 py-2 rounded-lg">
+                            <i class="ri-add-line"></i> 添加菜品
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="menuItemsList">
+                        <!-- 菜品卡片 -->
+                    </div>
+                </section>
+
+                <!-- 订单管理 -->
+                <section id="ordersSection" class="content-section hidden">
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">订单号</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">桌台</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">金额</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">时间</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersList" class="bg-white divide-y divide-gray-200">
+                                <!-- 订单列表 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 打印管理 -->
+                <section id="printSection" class="content-section hidden">
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">打印ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">订单号</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">桌台</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">创建时间</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="printJobsList" class="bg-white divide-y divide-gray-200">
+                                <!-- 打印任务列表 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 系统设置 -->
+                <section id="settingsSection" class="content-section hidden">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-bold mb-4">餐厅信息</h3>
+                        <form id="restaurantForm" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">餐厅名称</label>
+                                    <input type="text" id="restaurantName" class="form-input w-full px-3 py-2 border rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">电话</label>
+                                    <input type="text" id="restaurantPhone" class="form-input w-full px-3 py-2 border rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">地址</label>
+                                    <input type="text" id="restaurantAddress" class="form-input w-full px-3 py-2 border rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">营业时间</label>
+                                    <input type="text" id="restaurantHours" class="form-input w-full px-3 py-2 border rounded-lg">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">描述</label>
+                                <textarea id="restaurantDescription" rows="3" class="form-input w-full px-3 py-2 border rounded-lg"></textarea>
+                            </div>
+                            <button type="submit" class="btn-primary text-white px-6 py-2 rounded-lg">
+                                保存设置
+                            </button>
+                        </form>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- 通用模态框 -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 modal">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="modalTitle" class="text-xl font-bold">标题</h3>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+            </div>
+            <div id="modalContent">
+                <!-- 模态框内容 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div id="toast" class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg hidden z-50">
+        <span id="toastMessage"></span>
+    </div>
+
+    <script>
+        // 全局状态管理
+        const state = {
+            currentSection: 'dashboard',
+            tables: [],
+            categories: [],
+            menuItems: [],
+            orders: [],
+            printJobs: []
+        };
+
+        // DOM 元素
+        const elements = {
+            currentTime: document.getElementById('currentTime'),
+            sectionTitle: document.getElementById('sectionTitle'),
+            modal: document.getElementById('modal'),
+            modalTitle: document.getElementById('modalTitle'),
+            modalContent: document.getElementById('modalContent'),
+            toast: document.getElementById('toast'),
+            toastMessage: document.getElementById('toastMessage')
+        };
+
+        // 工具函数
+        function formatPrice(price) {
+            return `¥${parseFloat(price).toFixed(2)}`;
+        }
+
+        function formatTime(date) {
+            return new Date(date).toLocaleString('zh-CN');
+        }
+
+        function showToast(message, type = 'success') {
+            elements.toastMessage.textContent = message;
+            elements.toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg z-50 ${
+                type === 'success' ? 'bg-green-500' : 
+                type === 'error' ? 'bg-red-500' : 'bg-gray-800'
+            } text-white`;
+            elements.toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                elements.toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        function closeModal() {
+            elements.modal.classList.add('hidden');
+        }
+
+        function showModal(title, content) {
+            elements.modalTitle.textContent = title;
+            elements.modalContent.innerHTML = content;
+            elements.modal.classList.remove('hidden');
+        }
+
+        // API 调用函数
+        async function apiCall(url, options = {}) {
+            try {
+                const response = await fetch(`/admin${url}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer admin_token'
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.message);
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('API调用失败:', error);
+                showToast(error.message, 'error');
+                throw error;
+            }
+        }
+
+        // 显示页面部分
+        function showSection(section) {
+            // 隐藏所有部分
+            document.querySelectorAll('.content-section').forEach(el => {
+                el.classList.add('hidden');
+            });
+            
+            // 显示当前部分
+            document.getElementById(`${section}Section`).classList.remove('hidden');
+            
+            // 更新导航状态
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // 更新标题
+            const titles = {
+                dashboard: '数据总览',
+                tables: '桌台管理',
+                categories: '菜品分类',
+                menu: '菜品管理',
+                orders: '订单管理',
+                print: '打印管理',
+                settings: '系统设置'
+            };
+            
+            elements.sectionTitle.textContent = titles[section];
+            state.currentSection = section;
+            
+            // 加载对应数据
+            loadSectionData(section);
+        }
+
+        // 加载页面数据
+        async function loadSectionData(section) {
+            switch (section) {
+                case 'dashboard':
+                    await loadDashboardData();
+                    break;
+                case 'tables':
+                    await loadTables();
+                    break;
+                case 'categories':
+                    await loadCategories();
+                    break;
+                case 'menu':
+                    await loadCategoriesForMenu();
+                    await loadMenuItems();
+                    break;
+                case 'orders':
+                    await loadOrders();
+                    break;
+                case 'print':
+                    await loadPrintJobs();
+                    break;
+                case 'settings':
+                    await loadRestaurantSettings();
+                    break;
+            }
+        }
+
+        // 加载仪表板数据
+        async function loadDashboardData() {
+            try {
+                // 加载基础统计
+                const overviewData = await apiCall('/stats/overview');
+                const stats = overviewData.data;
+                
+                document.getElementById('todayOrders').textContent = stats.orders.total;
+                document.getElementById('todayRevenue').textContent = formatPrice(stats.orders.total_revenue);
+                document.getElementById('activeTables').textContent = stats.tables.occupied;
+                document.getElementById('avgOrder').textContent = formatPrice(stats.orders.avg_order_value);
+                
+                // 加载热销菜品
+                const popularData = await apiCall('/stats/popular-items?limit=10');
+                const popularItems = popularData.data.items;
+                
+                document.getElementById('popularItems').innerHTML = popularItems.map((item, index) => `
+                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-lg font-bold text-gray-400">${index + 1}</span>
+                            <div>
+                                <div class="font-medium">${item.name}</div>
+                                <div class="text-xs text-gray-500">售出 ${item.total_quantity} 份</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold">${formatPrice(item.total_amount)}</div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // 加载分类统计
+                const categoryData = await apiCall('/stats/categories');
+                const categories = categoryData.data.categories;
+                
+                document.getElementById('categoryStats').innerHTML = categories.map(category => `
+                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <span class="font-medium">${category.name}</span>
+                        <div class="text-right">
+                            <div class="font-bold">${formatPrice(category.total_amount)}</div>
+                            <div class="text-xs text-gray-500">${category.item_count} 项</div>
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('加载仪表板数据失败:', error);
+            }
+        }
+
+        // 加载桌台列表
+        async function loadTables() {
+            try {
+                const data = await apiCall('/tables');
+                state.tables = data.data.tables;
+                
+                document.getElementById('tablesList').innerHTML = state.tables.map(table => `
+                    <tr class="table-row">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ${table.table_number}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${table.table_name || '-'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${table.capacity}人
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${table.table_type === 'vip' ? 'VIP' : table.table_type === 'private' ? '包间' : '普通'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="status-badge status-${table.status}">
+                                ${table.status === 'available' ? '空闲' : 
+                                  table.status === 'occupied' ? '使用中' :
+                                  table.status === 'reserved' ? '预订' : '清理中'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${table.current_customers || 0}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="editTable(${table.id})" class="text-blue-600 hover:text-blue-900 mr-3">
+                                <i class="ri-edit-line"></i>
+                            </button>
+                            <button onclick="deleteTable(${table.id})" class="text-red-600 hover:text-red-900">
+                                <i class="ri-delete-bin-line"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+            } catch (error) {
+                console.error('加载桌台失败:', error);
+            }
+        }
+
+        // 加载分类列表
+        async function loadCategories() {
+            try {
+                const data = await apiCall('/categories');
+                state.categories = data.data;
+                
+                document.getElementById('categoriesList').innerHTML = state.categories.map(category => `
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-bold text-lg">${category.name}</h4>
+                            <div class="flex space-x-2">
+                                <button onclick="editCategory(${category.id})" class="text-blue-600 hover:text-blue-900">
+                                    <i class="ri-edit-line"></i>
+                                </button>
+                                <button onclick="deleteCategory(${category.id})" class="text-red-600 hover:text-red-900">
+                                    <i class="ri-delete-bin-line"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-2">${category.description || '无描述'}</p>
+                        <div class="text-xs text-gray-500">
+                            ${category.item_count || 0} 个菜品
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('加载分类失败:', error);
+            }
+        }
+
+        // 加载菜品列表
+        async function loadMenuItems() {
+            try {
+                const categoryFilter = document.getElementById('categoryFilter').value;
+                const availableFilter = document.getElementById('availableFilter').checked;
+                
+                let url = '/menu-items?limit=100';
+                if (categoryFilter) url += `&category_id=${categoryFilter}`;
+                if (availableFilter) url += '&is_available=true';
+                
+                const data = await apiCall(url);
+                state.menuItems = data.data.items;
+                
+                document.getElementById('menuItemsList').innerHTML = state.menuItems.map(item => `
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        ${item.image_url ? 
+                            `<img src="${item.image_url}" alt="${item.name}" class="w-full h-32 object-cover">` :
+                            `<div class="w-full h-32 bg-gray-200 flex items-center justify-center">
+                                <i class="ri-restaurant-line text-3xl text-gray-400"></i>
+                            </div>`
+                        }
+                        <div class="p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-bold">${item.name}</h4>
+                                ${item.is_available ? 
+                                    '<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">可售</span>' :
+                                    '<span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">停售</span>'
+                                }
+                            </div>
+                            <p class="text-gray-600 text-sm mb-2">${item.description || '无描述'}</p>
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-lg font-bold text-red-500">${formatPrice(item.price)}</span>
+                                <span class="text-xs text-gray-500">已售 ${item.order_count || 0}</span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button onclick="editMenuItem(${item.id})" class="flex-1 text-blue-600 border border-blue-600 py-1 rounded text-sm">
+                                    编辑
+                                </button>
+                                <button onclick="toggleMenuItemStatus(${item.id})" class="flex-1 text-yellow-600 border border-yellow-600 py-1 rounded text-sm">
+                                    ${item.is_available ? '停售' : '上架'}
+                                </button>
+                                <button onclick="deleteMenuItem(${item.id})" class="flex-1 text-red-600 border border-red-600 py-1 rounded text-sm">
+                                    删除
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('加载菜品失败:', error);
+            }
+        }
+
+        // 显示桌台模态框
+        function showTableModal(tableId = null) {
+            const isEdit = tableId !== null;
+            const table = isEdit ? state.tables.find(t => t.id === tableId) : null;
+            
+            const content = `
+                <form id="tableForm" onsubmit="saveTable(${tableId})">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">桌台号 *</label>
+                            <input type="text" id="tableNumber" value="${table ? table.table_number : ''}" required
+                                   class="form-input w-full px-3 py-2 border rounded-lg" ${isEdit ? 'readonly' : ''}>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">桌台名称</label>
+                            <input type="text" id="tableName" value="${table ? table.table_name : ''}"
+                                   class="form-input w-full px-3 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">容量 *</label>
+                            <input type="number" id="tableCapacity" value="${table ? table.capacity : 4}" min="1" max="20" required
+                                   class="form-input w-full px-3 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">类型</label>
+                            <select id="tableType" class="form-input w-full px-3 py-2 border rounded-lg">
+                                <option value="normal" ${!table || table.table_type === 'normal' ? 'selected' : ''}>普通</option>
+                                <option value="vip" ${table && table.table_type === 'vip' ? 'selected' : ''}>VIP</option>
+                                <option value="private" ${table && table.table_type === 'private' ? 'selected' : ''}>包间</option>
+                            </select>
+                        </div>
+                        ${isEdit ? `
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">状态</label>
+                            <select id="tableStatus" class="form-input w-full px-3 py-2 border rounded-lg">
+                                <option value="available" ${table.status === 'available' ? 'selected' : ''}>空闲</option>
+                                <option value="occupied" ${table.status === 'occupied' ? 'selected' : ''}>使用中</option>
+                                <option value="reserved" ${table.status === 'reserved' ? 'selected' : ''}>预订</option>
+                                <option value="cleaning" ${table.status === 'cleaning' ? 'selected' : ''}>清理中</option>
+                            </select>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="flex space-x-4 mt-6">
+                        <button type="button" onclick="closeModal()" class="flex-1 border border-gray-300 py-2 rounded-lg">
+                            取消
+                        </button>
+                        <button type="submit" class="flex-1 btn-primary text-white py-2 rounded-lg">
+                            ${isEdit ? '更新' : '创建'}
+                        </button>
+                    </div>
+                </form>
+            `;
+            
+            showModal(isEdit ? '编辑桌台' : '添加桌台', content);
+        }
+
+        // 保存桌台
+        async function saveTable(tableId) {
+            event.preventDefault();
+            
+            const formData = {
+                table_name: document.getElementById('tableName').value,
+                capacity: parseInt(document.getElementById('tableCapacity').value),
+                table_type: document.getElementById('tableType').value
+            };
+            
+            if (tableId) {
+                formData.status = document.getElementById('tableStatus').value;
+            }
+            
+            try {
+                const url = tableId ? `/tables/${tableId}` : '/tables';
+                const method = tableId ? 'PUT' : 'POST';
+                
+                await apiCall(url, {
+                    method: method,
+                    body: JSON.stringify(formData)
+                });
+                
+                showToast(`桌台${tableId ? '更新' : '创建'}成功`);
+                closeModal();
+                loadTables();
+                
+            } catch (error) {
+                console.error('保存桌台失败:', error);
+            }
+        }
+
+        // 刷新当前部分
+        function refreshCurrentSection() {
+            loadSectionData(state.currentSection);
+            showToast('数据已刷新');
+        }
+
+        // 更新时间
+        function updateTime() {
+            elements.currentTime.textContent = new Date().toLocaleString('zh-CN');
+        }
+
+        // 初始化应用
+        async function initApp() {
+            // 更新时间
+            updateTime();
+            setInterval(updateTime, 1000);
+            
+            // 加载初始数据
+            await loadSectionData('dashboard');
+            
+            showToast('管理后台已启动');
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', initApp);
+
+        // 暴露全局函数供HTML调用
+        window.showSection = showSection;
+        window.showTableModal = showTableModal;
+        window.saveTable = saveTable;
+        window.closeModal = closeModal;
+        window.refreshCurrentSection = refreshCurrentSection;
+    </script>
+</body>
+</html>

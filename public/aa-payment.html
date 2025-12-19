@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能AA支付 - 范式转换智能点餐系统</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css">
+    <style>
+        :root {
+            --primary: #c41d1d;
+            --primary-light: #ff6b6b;
+            --primary-dark: #a81a1a;
+        }
+        
+        .primary-bg {
+            background: var(--primary);
+        }
+        
+        .primary-text {
+            color: var(--primary);
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            border-color: var(--primary-dark);
+        }
+        
+        .payment-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .payment-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-up {
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 顶部导航 -->
+    <header class="fixed top-0 left-0 right-0 bg-white shadow-md z-40">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <button onclick="goBack()" class="text-gray-600 hover:text-gray-800">
+                        <i class="ri-arrow-left-line text-xl"></i>
+                    </button>
+                    <h1 class="text-xl font-bold primary-text">智能AA支付</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-sm text-gray-600">
+                        <i class="ri-team-line"></i>
+                        <span id="totalCustomers">0</span>人
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区域 -->
+    <main class="pt-16 pb-20">
+        <!-- 会话信息 -->
+        <section class="bg-white border-b">
+            <div class="container mx-auto px-4 py-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold" id="tableName">桌台</h2>
+                        <p class="text-gray-600" id="sessionTime">开始时间</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold primary-text" id="totalAmount">¥0.00</div>
+                        <div class="text-sm text-gray-600">订单总额</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 支付方式选择 -->
+        <section class="container mx-auto px-4 py-6">
+            <div class="flex space-x-4 mb-6">
+                <button 
+                    id="fullPaymentBtn"
+                    class="flex-1 btn-primary text-white py-3 rounded-lg font-bold"
+                    onclick="switchPaymentMode('full')"
+                >
+                    <i class="ri-money-dollar-circle-line"></i>
+                    整单支付
+                </button>
+                <button 
+                    id="aaPaymentBtn"
+                    class="flex-1 border border-gray-300 py-3 rounded-lg font-bold"
+                    onclick="switchPaymentMode('aa')"
+                >
+                    <i class="ri-group-line"></i>
+                    AA制支付
+                </button>
+            </div>
+        </section>
+
+        <!-- 整单支付界面 -->
+        <section id="fullPaymentSection" class="container mx-auto px-4">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-bold mb-4">支付方式</h3>
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <button class="payment-method-card border-2 border-primary rounded-lg p-4 text-center" data-method="wechat">
+                        <i class="ri-wechat-pay-fill text-3xl text-green-500"></i>
+                        <div class="mt-2">微信支付</div>
+                    </button>
+                    <button class="payment-method-card border rounded-lg p-4 text-center" data-method="alipay">
+                        <i class="ri-alipay-fill text-3xl text-blue-500"></i>
+                        <div class="mt-2">支付宝</div>
+                    </button>
+                </div>
+                <button id="fullPayBtn" class="w-full btn-primary text-white py-3 rounded-lg font-bold">
+                    立即支付 <span id="fullPayAmount">¥0.00</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- AA制支付界面 -->
+        <section id="aaPaymentSection" class="container mx-auto px-4 hidden">
+            <!-- 用户列表 -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h3 class="text-lg font-bold mb-4">选择菜品分配给用餐者</h3>
+                <div id="userList" class="space-y-4">
+                    <!-- 用户列表动态生成 -->
+                </div>
+            </div>
+
+            <!-- 分账明细 -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h3 class="text-lg font-bold mb-4">分账明细</h3>
+                <div id="splitDetails" class="space-y-3">
+                    <!-- 分账明细动态生成 -->
+                </div>
+            </div>
+
+            <!-- 支付按钮 -->
+            <button id="aaPayBtn" class="w-full btn-primary text-white py-3 rounded-lg font-bold">
+                确认AA制支付
+            </button>
+        </section>
+
+        <!-- 订单明细 -->
+        <section class="container mx-auto px-4 py-6">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-bold mb-4">订单明细</h3>
+                <div id="orderDetails" class="space-y-2">
+                    <!-- 订单明细动态生成 -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 支付确认弹窗 -->
+    <div id="paymentConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 slide-up">
+            <h3 class="text-xl font-bold mb-4">支付确认</h3>
+            <div id="paymentConfirmDetails" class="mb-4">
+                <!-- 支付详情动态生成 -->
+            </div>
+            <div class="flex space-x-4">
+                <button onclick="closePaymentConfirm()" class="flex-1 border border-gray-300 py-2 rounded-lg">
+                    取消
+                </button>
+                <button id="confirmPaymentBtn" class="flex-1 btn-primary text-white py-2 rounded-lg">
+                    确认支付
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div id="toast" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-lg hidden z-50">
+        <span id="toastMessage"></span>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // 全局状态管理
+        const state = {
+            sessionId: null,
+            sessionInfo: null,
+            orders: [],
+            currentUser: null,
+            users: [],
+            paymentMode: 'full', // 'full' or 'aa'
+            selectedPaymentMethod: 'wechat',
+            itemAssignments: {}, // 订单项分配给用户
+            socket: null
+        };
+
+        // DOM 元素
+        const elements = {
+            totalCustomers: document.getElementById('totalCustomers'),
+            tableName: document.getElementById('tableName'),
+            sessionTime: document.getElementById('sessionTime'),
+            totalAmount: document.getElementById('totalAmount'),
+            fullPaymentBtn: document.getElementById('fullPaymentBtn'),
+            aaPaymentBtn: document.getElementById('aaPaymentBtn'),
+            fullPaymentSection: document.getElementById('fullPaymentSection'),
+            aaPaymentSection: document.getElementById('aaPaymentSection'),
+            userList: document.getElementById('userList'),
+            splitDetails: document.getElementById('splitDetails'),
+            orderDetails: document.getElementById('orderDetails'),
+            fullPayAmount: document.getElementById('fullPayAmount'),
+            fullPayBtn: document.getElementById('fullPayBtn'),
+            aaPayBtn: document.getElementById('aaPayBtn'),
+            paymentConfirmModal: document.getElementById('paymentConfirmModal'),
+            paymentConfirmDetails: document.getElementById('paymentConfirmDetails'),
+            confirmPaymentBtn: document.getElementById('confirmPaymentBtn'),
+            toast: document.getElementById('toast'),
+            toastMessage: document.getElementById('toastMessage')
+        };
+
+        // 工具函数
+        function formatPrice(price) {
+            return `¥${parseFloat(price).toFixed(2)}`;
+        }
+
+        function showToast(message, type = 'info') {
+            elements.toastMessage.textContent = message;
+            elements.toast.className = `fixed bottom-20 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg z-50 ${
+                type === 'success' ? 'bg-green-500' : 
+                type === 'error' ? 'bg-red-500' : 'bg-gray-800'
+            } text-white`;
+            elements.toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                elements.toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        // API 调用函数
+        async function apiCall(url, options = {}) {
+            try {
+                const response = await fetch(`/customer${url}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.message);
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('API调用失败:', error);
+                showToast(error.message, 'error');
+                throw error;
+            }
+        }
+
+        // 解析URL参数获取会话ID
+        function getSessionId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('session_id');
+        }
+
+        // 加载会话信息
+        async function loadSessionInfo() {
+            try {
+                const data = await apiCall(`/sessions/${state.sessionId}`);
+                state.sessionInfo = data.data.session_info;
+                state.users = data.data.diners;
+                state.orders = data.data.current_orders;
+                
+                // 设置当前用户（简化处理，实际应该从用户信息获取）
+                state.currentUser = state.users[0];
+                
+                renderSessionInfo();
+                renderOrderDetails();
+                
+                if (state.paymentMode === 'aa') {
+                    renderUserList();
+                    calculateSplit();
+                }
+                
+            } catch (error) {
+                console.error('加载会话信息失败:', error);
+            }
+        }
+
+        // 渲染会话信息
+        function renderSessionInfo() {
+            elements.totalCustomers.textContent = state.sessionInfo.total_customers;
+            elements.tableName.textContent = state.sessionInfo.table.table_name || state.sessionInfo.table.table_number;
+            elements.sessionTime.textContent = `开始时间：${new Date(state.sessionInfo.start_time).toLocaleString('zh-CN')}`;
+            elements.totalAmount.textContent = formatPrice(state.sessionInfo.total_amount);
+            elements.fullPayAmount.textContent = formatPrice(state.sessionInfo.total_amount);
+        }
+
+        // 渲染订单明细
+        function renderOrderDetails() {
+            elements.orderDetails.innerHTML = state.orders.map(order => `
+                <div class="border-b pb-2 mb-2">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-bold">订单号：${order.order_no}</span>
+                        <span class="text-sm text-gray-600">${formatPrice(order.total_amount)}</span>
+                    </div>
+                    <div class="space-y-1">
+                        ${order.items.map(item => `
+                            <div class="flex justify-between text-sm">
+                                <span>${item.item_name} x ${item.quantity}</span>
+                                <span>${formatPrice(item.subtotal)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 切换支付模式
+        function switchPaymentMode(mode) {
+            state.paymentMode = mode;
+            
+            if (mode === 'full') {
+                elements.fullPaymentBtn.classList.add('btn-primary', 'text-white');
+                elements.fullPaymentBtn.classList.remove('border', 'border-gray-300');
+                elements.aaPaymentBtn.classList.remove('btn-primary', 'text-white');
+                elements.aaPaymentBtn.classList.add('border', 'border-gray-300');
+                elements.fullPaymentSection.classList.remove('hidden');
+                elements.aaPaymentSection.classList.add('hidden');
+            } else {
+                elements.aaPaymentBtn.classList.add('btn-primary', 'text-white');
+                elements.aaPaymentBtn.classList.remove('border', 'border-gray-300');
+                elements.fullPaymentBtn.classList.remove('btn-primary', 'text-white');
+                elements.fullPaymentBtn.classList.add('border', 'border-gray-300');
+                elements.aaPaymentSection.classList.remove('hidden');
+                elements.fullPaymentSection.classList.add('hidden');
+                
+                renderUserList();
+                calculateSplit();
+            }
+        }
+
+        // 渲染用户列表（AA制）
+        function renderUserList() {
+            elements.userList.innerHTML = state.users.map(user => `
+                <div class="user-card payment-card border rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center space-x-3">
+                            <div class="user-avatar">
+                                ${user.nickname ? user.nickname.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                            <div>
+                                <div class="font-bold">${user.nickname || '用户'}</div>
+                                ${user.is_leader ? '<span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">队长</span>' : ''}
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold primary-text" id="userAmount_${user.openid}">¥0.00</div>
+                            <div class="text-xs text-gray-600">应付金额</div>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        ${state.orders.map(order => order.items.map(item => `
+                            <div class="flex items-center justify-between text-sm">
+                                <label class="flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        class="item-checkbox mr-2"
+                                        data-user="${user.openid}"
+                                        data-item="${item.id}"
+                                        data-price="${item.subtotal}"
+                                        onchange="updateItemAssignment('${user.openid}', '${item.id}', ${item.subtotal}, this.checked)"
+                                    >
+                                    <span>${item.item_name} x ${item.quantity}</span>
+                                </label>
+                                <span class="text-gray-600">${formatPrice(item.subtotal)}</span>
+                            </div>
+                        `).join('')).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 更新项目分配
+        function updateItemAssignment(userOpenid, itemId, price, isChecked) {
+            if (!state.itemAssignments[userOpenid]) {
+                state.itemAssignments[userOpenid] = [];
+            }
+            
+            if (isChecked) {
+                // 移除其他用户对该项目的分配
+                Object.keys(state.itemAssignments).forEach(openid => {
+                    if (openid !== userOpenid) {
+                        state.itemAssignments[openid] = state.itemAssignments[openid].filter(
+                            item => item.order_item_id !== itemId
+                        );
+                        // 更新其他用户的复选框
+                        const checkbox = document.querySelector(`input[data-user="${openid}"][data-item="${itemId}"]`);
+                        if (checkbox) checkbox.checked = false;
+                    }
+                });
+                
+                state.itemAssignments[userOpenid].push({
+                    order_item_id: itemId,
+                    price: price
+                });
+            } else {
+                state.itemAssignments[userOpenid] = state.itemAssignments[userOpenid].filter(
+                    item => item.order_item_id !== itemId
+                );
+            }
+            
+            calculateSplit();
+        }
+
+        // 计算分账
+        function calculateSplit() {
+            const splitDetails = {};
+            let totalAssigned = 0;
+            
+            // 计算每个用户的应付金额
+            state.users.forEach(user => {
+                const userItems = state.itemAssignments[user.openid] || [];
+                const userAmount = userItems.reduce((sum, item) => sum + item.price, 0);
+                splitDetails[user.openid] = {
+                    user: user,
+                    items: userItems,
+                    amount: userAmount
+                };
+                totalAssigned += userAmount;
+                
+                // 更新用户显示金额
+                const amountElement = document.getElementById(`userAmount_${user.openid}`);
+                if (amountElement) {
+                    amountElement.textContent = formatPrice(userAmount);
+                }
+            });
+            
+            // 渲染分账明细
+            renderSplitDetails(splitDetails);
+            
+            // 检查是否所有项目都已分配
+            if (totalAssigned < state.sessionInfo.total_amount) {
+                showToast(`还有 ${formatPrice(state.sessionInfo.total_amount - totalAssigned)} 未分配`, 'error');
+            }
+        }
+
+        // 渲染分账明细
+        function renderSplitDetails(splitDetails) {
+            const details = Object.values(splitDetails).filter(detail => detail.amount > 0);
+            
+            if (details.length === 0) {
+                elements.splitDetails.innerHTML = '<p class="text-gray-500 text-center">请分配菜品给用餐者</p>';
+                return;
+            }
+            
+            elements.splitDetails.innerHTML = details.map(detail => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="user-avatar text-sm">
+                            ${detail.user.nickname ? detail.user.nickname.charAt(0).toUpperCase() : 'U'}
+                        </div>
+                        <div>
+                            <div class="font-bold">${detail.user.nickname || '用户'}</div>
+                            <div class="text-sm text-gray-600">${detail.items.length} 项菜品</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold primary-text">${formatPrice(detail.amount)}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 支付方式选择
+        document.querySelectorAll('.payment-method-card').forEach(card => {
+            card.addEventListener('click', function() {
+                document.querySelectorAll('.payment-method-card').forEach(c => {
+                    c.classList.remove('border-2', 'border-primary');
+                    c.classList.add('border');
+                });
+                this.classList.remove('border');
+                this.classList.add('border-2', 'border-primary');
+                state.selectedPaymentMethod = this.dataset.method;
+            });
+        });
+
+        // 整单支付
+        elements.fullPayBtn.addEventListener('click', function() {
+            showPaymentConfirm('full', {
+                amount: state.sessionInfo.total_amount,
+                payment_method: state.selectedPaymentMethod
+            });
+        });
+
+        // AA制支付
+        elements.aaPayBtn.addEventListener('click', function() {
+            const splitDetails = Object.values(state.itemAssignments).filter(
+                detail => detail.items && detail.items.length > 0
+            );
+            
+            if (splitDetails.length === 0) {
+                showToast('请先分配菜品给用餐者', 'error');
+                return;
+            }
+            
+            showPaymentConfirm('aa', {
+                split_details: splitDetails.map(detail => ({
+                    diner_openid: detail.user.openid,
+                    order_items: detail.items,
+                    original_amount: detail.amount,
+                    final_amount: detail.amount
+                }))
+            });
+        });
+
+        // 显示支付确认
+        function showPaymentConfirm(type, paymentData) {
+            let confirmHtml = '';
+            
+            if (type === 'full') {
+                confirmHtml = `
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span>支付方式：</span>
+                            <span>${state.selectedPaymentMethod === 'wechat' ? '微信支付' : '支付宝'}</span>
+                        </div>
+                        <div class="flex justify-between font-bold">
+                            <span>支付金额：</span>
+                            <span class="primary-text">${formatPrice(paymentData.amount)}</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                confirmHtml = `
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span>支付方式：</span>
+                            <span>AA制支付</span>
+                        </div>
+                        <div class="border-t pt-2">
+                            ${paymentData.split_details.map(detail => `
+                                <div class="flex justify-between text-sm">
+                                    <span>${detail.diner_openid}</span>
+                                    <span>${formatPrice(detail.final_amount)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="flex justify-between font-bold border-t pt-2">
+                            <span>总金额：</span>
+                            <span class="primary-text">${formatPrice(paymentData.split_details.reduce((sum, d) => sum + d.final_amount, 0))}</span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            elements.paymentConfirmDetails.innerHTML = confirmHtml;
+            elements.paymentConfirmModal.classList.remove('hidden');
+            
+            // 绑定确认支付按钮事件
+            elements.confirmPaymentBtn.onclick = function() {
+                processPayment(type, paymentData);
+            };
+        }
+
+        // 处理支付
+        async function processPayment(type, paymentData) {
+            try {
+                const requestData = {
+                    session_id: state.sessionId,
+                    diner_openid: state.currentUser.openid,
+                    payment_method: type === 'aa' ? 'split_aa' : state.selectedPaymentMethod,
+                    amount: type === 'aa' ? 
+                        paymentData.split_details.reduce((sum, d) => sum + d.final_amount, 0) : 
+                        paymentData.amount
+                };
+                
+                if (type === 'aa') {
+                    requestData.split_details = paymentData.split_details;
+                    requestData.order_ids = state.orders.map(order => order.id);
+                }
+                
+                const data = await apiCall('/payments', {
+                    method: 'POST',
+                    body: JSON.stringify(requestData)
+                });
+                
+                closePaymentConfirm();
+                showToast('支付提交成功！', 'success');
+                
+                // 模拟支付成功跳转
+                setTimeout(() => {
+                    window.location.href = '/index.html';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('支付处理失败:', error);
+            }
+        }
+
+        // 关闭支付确认
+        function closePaymentConfirm() {
+            elements.paymentConfirmModal.classList.add('hidden');
+        }
+
+        // 连接Socket
+        function connectSocket() {
+            state.socket = io();
+            
+            state.socket.emit('join_session', state.sessionId);
+            
+            state.socket.on('payment_status_update', (data) => {
+                showToast(`支付状态更新: ${data.status}`, 'info');
+            });
+        }
+
+        // 初始化应用
+        async function initApp() {
+            state.sessionId = getSessionId();
+            
+            if (!state.sessionId) {
+                showToast('会话ID缺失', 'error');
+                return;
+            }
+            
+            // 加载会话信息
+            await loadSessionInfo();
+            
+            // 连接Socket
+            connectSocket();
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>

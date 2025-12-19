@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后厨显示系统 - 范式转换智能点餐系统</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css">
+    <style>
+        :root {
+            --primary: #c41d1d;
+            --primary-light: #ff6b6b;
+            --primary-dark: #a81a1a;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fbbf24;
+        }
+        
+        .status-confirmed {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #60a5fa;
+        }
+        
+        .status-preparing {
+            background: #e0e7ff;
+            color: #3730a3;
+            border: 1px solid #818cf8;
+        }
+        
+        .status-ready {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #34d399;
+        }
+        
+        .status-served {
+            background: #f3f4f6;
+            color: #6b7280;
+            border: 1px solid #d1d5db;
+        }
+        
+        .priority-badge {
+            background: var(--danger);
+            color: white;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .order-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .order-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        }
+        
+        .kitchen-header {
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+        }
+        
+        .countdown {
+            animation: countdown 1s infinite;
+        }
+        
+        @keyframes countdown {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- 顶部导航 -->
+    <header class="kitchen-header text-white shadow-lg">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <i class="ri-restaurant-2-line text-2xl"></i>
+                    <h1 class="text-xl font-bold">后厨显示系统</h1>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <div class="text-sm">
+                        <i class="ri-time-line"></i>
+                        <span id="currentTime"></span>
+                    </div>
+                    <div class="text-sm">
+                        <i class="ri-calendar-line"></i>
+                        <span id="currentDate"></span>
+                    </div>
+                    <button onclick="refreshOrders()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-1 rounded">
+                        <i class="ri-refresh-line"></i>
+                        刷新
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 实时统计 -->
+    <section class="bg-white border-b">
+        <div class="container mx-auto px-4 py-4">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div class="stats-card text-white rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold" id="pendingCount">0</div>
+                    <div class="text-xs">待确认</div>
+                </div>
+                <div class="bg-blue-500 text-white rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold" id="preparingCount">0</div>
+                    <div class="text-xs">制作中</div>
+                </div>
+                <div class="bg-green-500 text-white rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold" id="readyCount">0</div>
+                    <div class="text-xs">待上菜</div>
+                </div>
+                <div class="bg-purple-500 text-white rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold" id="todayServed">0</div>
+                    <div class="text-xs">今日上菜</div>
+                </div>
+                <div class="bg-orange-500 text-white rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold" id="avgTime">0</div>
+                    <div class="text-xs">平均等待</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 状态筛选 -->
+    <section class="bg-white border-b sticky top-0 z-30">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between py-3">
+                <div class="flex space-x-4">
+                    <button 
+                        class="filter-btn px-4 py-2 rounded-lg text-sm font-medium status-pending"
+                        data-status="pending"
+                        onclick="filterByStatus('pending')"
+                    >
+                        <i class="ri-time-line"></i>
+                        待确认
+                    </button>
+                    <button 
+                        class="filter-btn px-4 py-2 rounded-lg text-sm font-medium bg-gray-100"
+                        data-status="confirmed"
+                        onclick="filterByStatus('confirmed')"
+                    >
+                        <i class="ri-check-line"></i>
+                        已确认
+                    </button>
+                    <button 
+                        class="filter-btn px-4 py-2 rounded-lg text-sm font-medium bg-gray-100"
+                        data-status="preparing"
+                        onclick="filterByStatus('preparing')"
+                    >
+                        <i class="ri-fire-line"></i>
+                        制作中
+                    </button>
+                    <button 
+                        class="filter-btn px-4 py-2 rounded-lg text-sm font-medium bg-gray-100"
+                        data-status="ready"
+                        onclick="filterByStatus('ready')"
+                    >
+                        <i class="ri-restaurant-line"></i>
+                        待上菜
+                    </button>
+                    <button 
+                        class="filter-btn px-4 py-2 rounded-lg text-sm font-medium bg-gray-100"
+                        data-status="all"
+                        onclick="filterByStatus('all')"
+                    >
+                        <i class="ri-list-check"></i>
+                        全部
+                    </button>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="toggleAutoRefresh()" id="autoRefreshBtn" class="text-green-500">
+                        <i class="ri-play-circle-line text-xl"></i>
+                        自动刷新
+                    </button>
+                    <audio id="notificationSound" preload="auto">
+                        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjGH0fPTgjMGHm7A7+OZURE" type="audio/wav">
+                    </audio>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 订单列表 -->
+    <main class="container mx-auto px-4 py-6">
+        <div id="ordersContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- 订单卡片动态生成 -->
+        </div>
+        
+        <!-- 空状态 -->
+        <div id="emptyState" class="hidden text-center py-12">
+            <i class="ri-restaurant-line text-6xl text-gray-300"></i>
+            <p class="text-gray-500 mt-4">暂无订单</p>
+        </div>
+    </main>
+
+    <!-- 订单详情弹窗 -->
+    <div id="orderDetailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold">订单详情</h3>
+                <button onclick="closeOrderDetail()" class="text-gray-500 hover:text-gray-700">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+            </div>
+            <div id="orderDetailContent">
+                <!-- 订单详情动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div id="toast" class="fixed top-20 right-4 bg-green-500 text-white px-6 py-3 rounded-lg hidden z-50 fade-in">
+        <span id="toastMessage"></span>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // 全局状态管理
+        const state = {
+            orders: [],
+            currentFilter: 'pending',
+            autoRefresh: true,
+            refreshInterval: null,
+            socket: null,
+            stats: {
+                pending: 0,
+                preparing: 0,
+                ready: 0,
+                todayServed: 0,
+                avgTime: 0
+            }
+        };
+
+        // DOM 元素
+        const elements = {
+            currentTime: document.getElementById('currentTime'),
+            currentDate: document.getElementById('currentDate'),
+            pendingCount: document.getElementById('pendingCount'),
+            preparingCount: document.getElementById('preparingCount'),
+            readyCount: document.getElementById('readyCount'),
+            todayServed: document.getElementById('todayServed'),
+            avgTime: document.getElementById('avgTime'),
+            ordersContainer: document.getElementById('ordersContainer'),
+            emptyState: document.getElementById('emptyState'),
+            orderDetailModal: document.getElementById('orderDetailModal'),
+            orderDetailContent: document.getElementById('orderDetailContent'),
+            toast: document.getElementById('toast'),
+            toastMessage: document.getElementById('toastMessage'),
+            autoRefreshBtn: document.getElementById('autoRefreshBtn'),
+            notificationSound: document.getElementById('notificationSound')
+        };
+
+        // 工具函数
+        function formatTime(date) {
+            return new Date(date).toLocaleTimeString('zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function formatDuration(minutes) {
+            if (minutes < 60) {
+                return `${minutes}分钟`;
+            } else {
+                const hours = Math.floor(minutes / 60);
+                const mins = minutes % 60;
+                return `${hours}小时${mins}分钟`;
+            }
+        }
+
+        function formatPrice(price) {
+            return `¥${parseFloat(price).toFixed(2)}`;
+        }
+
+        function getStatusClass(status) {
+            const statusMap = {
+                'pending': 'status-pending',
+                'confirmed': 'status-confirmed',
+                'preparing': 'status-preparing',
+                'ready': 'status-ready',
+                'served': 'status-served'
+            };
+            return statusMap[status] || 'status-pending';
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': '待确认',
+                'confirmed': '已确认',
+                'preparing': '制作中',
+                'ready': '待上菜',
+                'served': '已上菜'
+            };
+            return statusMap[status] || status;
+        }
+
+        function showToast(message) {
+            elements.toastMessage.textContent = message;
+            elements.toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                elements.toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        function playNotificationSound() {
+            elements.notificationSound.play().catch(e => console.log('无法播放声音:', e));
+        }
+
+        // API 调用函数
+        async function apiCall(url, options = {}) {
+            try {
+                const response = await fetch(`/kitchen${url}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.message);
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('API调用失败:', error);
+                showToast(error.message);
+                throw error;
+            }
+        }
+
+        // 加载订单列表
+        async function loadOrders() {
+            try {
+                const data = await apiCall(`/orders?status=${state.currentFilter === 'all' ? '' : state.currentFilter}&limit=50`);
+                state.orders = data.data.orders;
+                renderOrders();
+                updateStats();
+            } catch (error) {
+                console.error('加载订单失败:', error);
+            }
+        }
+
+        // 渲染订单列表
+        function renderOrders() {
+            if (state.orders.length === 0) {
+                elements.ordersContainer.innerHTML = '';
+                elements.emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            elements.emptyState.classList.add('hidden');
+            
+            elements.ordersContainer.innerHTML = state.orders.map(order => `
+                <div class="order-card bg-white rounded-lg shadow-md overflow-hidden fade-in">
+                    <div class="p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center space-x-2">
+                                <span class="font-bold text-lg">#${order.order_no}</span>
+                                ${order.priority ? '<span class="priority-badge text-xs px-2 py-1 rounded">加急</span>' : ''}
+                            </div>
+                            <span class="${getStatusClass(order.status)} px-2 py-1 rounded text-xs font-medium">
+                                ${getStatusText(order.status)}
+                            </span>
+                        </div>
+                        
+                        <div class="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                            <div>
+                                <i class="ri-restaurant-line"></i>
+                                ${order.table.table_name} (${order.table.table_number})
+                            </div>
+                            <div>
+                                <i class="ri-time-line"></i>
+                                ${formatTime(order.created_at)}
+                            </div>
+                            <div>
+                                <i class="ri-group-line"></i>
+                                ${order.session_info.total_customers}人
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-1 mb-3">
+                            ${order.items.slice(0, 3).map(item => `
+                                <div class="flex items-center justify-between text-sm">
+                                    <span class="flex-1">${item.item_name} x${item.quantity}</span>
+                                    <span class="${getStatusClass(item.status)} px-1 py-0.5 rounded text-xs">
+                                        ${getStatusText(item.status)}
+                                    </span>
+                                </div>
+                            `).join('')}
+                            ${order.items.length > 3 ? `
+                                <div class="text-xs text-gray-500">还有${order.items.length - 3}项...</div>
+                            ` : ''}
+                        </div>
+                        
+                        ${order.special_requests ? `
+                            <div class="bg-yellow-50 border border-yellow-200 rounded p-2 mb-3">
+                                <div class="text-xs text-yellow-800">
+                                    <i class="ri-alert-line"></i>
+                                    ${order.special_requests}
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="text-sm text-gray-600">
+                                <i class="ri-timer-line"></i>
+                                等待 ${order.wait_time} 分钟
+                            </div>
+                            <div class="font-bold primary-text">
+                                ${formatPrice(order.total_amount)}
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            ${getStatusActions(order.status, order.id)}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 获取状态操作按钮
+        function getStatusActions(status, orderId) {
+            switch (status) {
+                case 'pending':
+                    return `
+                        <button onclick="updateOrderStatus('${orderId}', 'confirmed')" class="flex-1 bg-blue-500 text-white px-3 py-2 rounded text-sm">
+                            <i class="ri-check-line"></i> 确认
+                        </button>
+                        <button onclick="updateOrderStatus('${orderId}', 'cancelled')" class="flex-1 bg-red-500 text-white px-3 py-2 rounded text-sm">
+                            <i class="ri-close-line"></i> 取消
+                        </button>
+                    `;
+                case 'confirmed':
+                    return `
+                        <button onclick="updateOrderStatus('${orderId}', 'preparing')" class="flex-1 bg-purple-500 text-white px-3 py-2 rounded text-sm">
+                            <i class="ri-fire-line"></i> 开始制作
+                        </button>
+                        <button onclick="showOrderDetail('${orderId}')" class="flex-1 bg-gray-500 text-white px-3 py-2 rounded text-sm">
+                            <i class="ri-eye-line"></i> 详情
+                        </button>
+                    `;
+                case 'preparing':
+                    return `
+                        <button onclick="updateOrderStatus('${orderId}', 'ready')" class="flex-1 bg-green-500 text-white px-3 py-2 rounded text-sm">
+                            <i class="ri-restaurant-line"></i> 制作完成
+                        </button>
+                        <button onclick="showOrderDetail('${orderId}')" class="flex-1 bg-gray-500 text-white px-3 py-2 rounded text-sm">
+                            <i class="ri-eye-line"></i> 详情
+                        </button>
+                    `;
+                case 'ready':
+                    return `
+                        <button onclick="updateOrderStatus('${orderId}', 'served')" class="flex-1 bg-orange-500 text-white px-3 py-2 rounded text-sm">
+                            <i class="ri-check-double-line"></i> 已上菜
+                        </button>
+                        <button onclick="showOrderDetail('${orderId}')" class="flex-1 bg-gray-500 text-white px-3 py-2 rounded text-sm">
+                            <i class="ri-eye-line"></i> 详情
+                        </button>
+                    `;
+                default:
+                    return `
+                        <button onclick="showOrderDetail('${orderId}')" class="flex-1 bg-gray-500 text-white px-3 py-2 rounded text-sm">
+                            <i class="ri-eye-line"></i> 详情
+                        </button>
+                    `;
+            }
+        }
+
+        // 更新订单状态
+        async function updateOrderStatus(orderId, status) {
+            try {
+                const data = await apiCall(`/orders/${orderId}/status`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ 
+                        status: status,
+                        reason: status === 'cancelled' ? '后厨取消' : undefined
+                    })
+                });
+                
+                showToast(`订单${getStatusText(status)}成功`);
+                loadOrders();
+                
+            } catch (error) {
+                console.error('更新订单状态失败:', error);
+            }
+        }
+
+        // 显示订单详情
+        async function showOrderDetail(orderId) {
+            try {
+                // 获取订单详细信息
+                const order = state.orders.find(o => o.id === orderId);
+                if (!order) return;
+                
+                elements.orderDetailContent.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between pb-3 border-b">
+                            <div>
+                                <h4 class="text-lg font-bold">订单 #${order.order_no}</h4>
+                                <p class="text-sm text-gray-600">${formatTime(order.created_at)}</p>
+                            </div>
+                            <span class="${getStatusClass(order.status)} px-3 py-1 rounded text-sm font-medium">
+                                ${getStatusText(order.status)}
+                            </span>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <span class="text-gray-600">桌台：</span>
+                                <span class="font-medium">${order.table.table_name} (${order.table.table_number})</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">人数：</span>
+                                <span class="font-medium">${order.session_info.total_customers}人</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">金额：</span>
+                                <span class="font-medium primary-text">${formatPrice(order.total_amount)}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">等待：</span>
+                                <span class="font-medium">${order.wait_time} 分钟</span>
+                            </div>
+                        </div>
+                        
+                        ${order.special_requests ? `
+                            <div class="bg-yellow-50 border border-yellow-200 rounded p-3">
+                                <div class="text-sm text-yellow-800">
+                                    <i class="ri-alert-line"></i>
+                                    <strong>特殊要求：</strong>${order.special_requests}
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        <div>
+                            <h5 class="font-bold mb-2">菜品明细</h5>
+                            <div class="space-y-2">
+                                ${order.items.map(item => `
+                                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                        <div class="flex-1">
+                                            <div class="font-medium">${item.item_name} x${item.quantity}</div>
+                                            <div class="text-sm text-gray-600">${item.category.name}</div>
+                                            ${item.special_instructions ? `
+                                                <div class="text-xs text-blue-600">备注：${item.special_instructions}</div>
+                                            ` : ''}
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="${getStatusClass(item.status)} px-2 py-1 rounded text-xs">
+                                                ${getStatusText(item.status)}
+                                            </div>
+                                            <div class="font-medium">${formatPrice(item.subtotal)}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                elements.orderDetailModal.classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('显示订单详情失败:', error);
+            }
+        }
+
+        // 关闭订单详情
+        function closeOrderDetail() {
+            elements.orderDetailModal.classList.add('hidden');
+        }
+
+        // 状态筛选
+        function filterByStatus(status) {
+            state.currentFilter = status;
+            
+            // 更新按钮样式
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if (btn.dataset.status === status) {
+                    btn.classList.remove('bg-gray-100');
+                    btn.classList.add(getStatusClass(status));
+                } else {
+                    btn.classList.add('bg-gray-100');
+                    btn.classList.remove('status-pending', 'status-confirmed', 'status-preparing', 'status-ready');
+                }
+            });
+            
+            loadOrders();
+        }
+
+        // 刷新订单
+        function refreshOrders() {
+            loadOrders();
+            showToast('订单已刷新');
+        }
+
+        // 切换自动刷新
+        function toggleAutoRefresh() {
+            state.autoRefresh = !state.autoRefresh;
+            
+            if (state.autoRefresh) {
+                elements.autoRefreshBtn.innerHTML = '<i class="ri-pause-circle-line text-xl"></i> 停止刷新';
+                elements.autoRefreshBtn.classList.remove('text-red-500');
+                elements.autoRefreshBtn.classList.add('text-green-500');
+                startAutoRefresh();
+            } else {
+                elements.autoRefreshBtn.innerHTML = '<i class="ri-play-circle-line text-xl"></i> 自动刷新';
+                elements.autoRefreshBtn.classList.remove('text-green-500');
+                elements.autoRefreshBtn.classList.add('text-red-500');
+                stopAutoRefresh();
+            }
+        }
+
+        // 开始自动刷新
+        function startAutoRefresh() {
+            if (state.refreshInterval) {
+                clearInterval(state.refreshInterval);
+            }
+            
+            state.refreshInterval = setInterval(() => {
+                loadOrders();
+                loadRealtimeStats();
+            }, 30000); // 30秒刷新一次
+        }
+
+        // 停止自动刷新
+        function stopAutoRefresh() {
+            if (state.refreshInterval) {
+                clearInterval(state.refreshInterval);
+                state.refreshInterval = null;
+            }
+        }
+
+        // 更新时间显示
+        function updateDateTime() {
+            const now = new Date();
+            elements.currentTime.textContent = now.toLocaleTimeString('zh-CN');
+            elements.currentDate.textContent = now.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long'
+            });
+        }
+
+        // 加载实时统计
+        async function loadRealtimeStats() {
+            try {
+                const data = await apiCall('/dashboard/realtime');
+                const stats = data.data;
+                
+                elements.pendingCount.textContent = stats.pending_orders;
+                elements.preparingCount.textContent = stats.preparing_orders;
+                elements.readyCount.textContent = stats.ready_orders;
+                elements.todayServed.textContent = stats.today_served;
+                elements.avgTime.textContent = `${stats.avg_wait_time}分钟`;
+                
+            } catch (error) {
+                console.error('加载统计数据失败:', error);
+            }
+        }
+
+        // 更新统计
+        function updateStats() {
+            const stats = {
+                pending: 0,
+                preparing: 0,
+                ready: 0,
+                served: 0
+            };
+            
+            state.orders.forEach(order => {
+                if (stats[order.status] !== undefined) {
+                    stats[order.status]++;
+                }
+            });
+            
+            elements.pendingCount.textContent = stats.pending;
+            elements.preparingCount.textContent = stats.preparing;
+            elements.readyCount.textContent = stats.ready;
+        }
+
+        // 连接Socket
+        function connectSocket() {
+            state.socket = io();
+            
+            state.socket.on('kitchen_new_order', (data) => {
+                showToast(`新订单 #${data.order_no}`);
+                playNotificationSound();
+                loadOrders();
+            });
+            
+            state.socket.on('kitchen_order_update', (data) => {
+                loadOrders();
+            });
+            
+            state.socket.on('kitchen_order_cancelled', (data) => {
+                showToast(`订单 #${data.order_no} 已取消`);
+                loadOrders();
+            });
+        }
+
+        // 初始化应用
+        async function initApp() {
+            // 更新时间
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+            
+            // 加载数据
+            await loadOrders();
+            await loadRealtimeStats();
+            
+            // 连接Socket
+            connectSocket();
+            
+            // 启动自动刷新
+            if (state.autoRefresh) {
+                startAutoRefresh();
+            }
+            
+            showToast('后厨系统已启动');
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', initApp);
+        
+        // 页面卸载时清理
+        window.addEventListener('beforeunload', () => {
+            stopAutoRefresh();
+        });
+    </script>
+</body>
+</html>
