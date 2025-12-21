@@ -90,7 +90,8 @@ function setupMiddlewareAndRoutes(app, apiRoutes, customerRoutes, kitchenRoutes,
         'http://paobai.cn',
         'https://paobai.cn', 
         'http://www.paobai.cn',
-        'https://www.paobai.cn'
+        'https://www.paobai.cn',
+        'https://paobai-restaurant.paobai.cn'  // 支持可能的子域名
       ];
       
       if (allowedOrigins.includes(origin)) {
@@ -105,7 +106,8 @@ function setupMiddlewareAndRoutes(app, apiRoutes, customerRoutes, kitchenRoutes,
       'http://paobai.cn',
       'https://paobai.cn',
       'http://www.paobai.cn', 
-      'https://www.paobai.cn'
+      'https://www.paobai.cn',
+      'https://paobai-restaurant.paobai.cn'
     ];
   }
   
