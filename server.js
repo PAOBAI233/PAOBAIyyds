@@ -68,19 +68,51 @@ function setupMiddlewareAndRoutes(app, apiRoutes, customerRoutes, kitchenRoutes,
   app.use(morgan('combined', { stream: { write: message => console.log(message.trim()) } }));
 
   // CORS配置
-  const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || [
-    'http://localhost:3000',
-    'http://paobai.cn',
-    'https://paobai.cn',
-    'http://www.paobai.cn',
-    'https://www.paobai.cn'
-  ];
+  let corsOptions = {
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  };
+
+  // 开发环境下允许所有本地来源
+  if (process.env.NODE_ENV === 'development') {
+    corsOptions.origin = function (origin, callback) {
+      // 允许没有origin的请求（如移动应用、Postman等）
+      if (!origin) return callback(null, true);
+      
+      // 允许所有localhost和127.0.0.1来源
+      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return callback(null, true);
+      }
+      
+      // 允许配置的域名
+      const allowedOrigins = [
+        'http://paobai.cn',
+        'https://paobai.cn', 
+        'http://www.paobai.cn',
+        'https://www.paobai.cn'
+      ];
+      
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        callback(new Error('CORS策略不允许此来源'));
+      }
+    };
+  } else {
+    // 生产环境使用配置的来源列表
+    corsOptions.origin = process.env.CORS_ORIGIN?.split(',') || [
+      'http://paobai.cn',
+      'https://paobai.cn',
+      'http://www.paobai.cn', 
+      'https://www.paobai.cn'
+    ];
+  }
   
-  app.use(cors({
-    origin: allowedOrigins,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
-  }));
+  app.use(cors(corsOptions));
+  
+  // 手动处理预检请求（确保OPTIONS请求被正确处理）
+  app.options('*', cors(corsOptions));
 
   // 请求限制
   const limiter = rateLimit({
