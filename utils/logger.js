@@ -93,7 +93,7 @@ if (process.env.NODE_ENV === 'development') {
       winston.format.colorize(),
       winston.format.simple()
     )
-  });
+  }));
 }
 
 // 导出便捷方法

@@ -13,7 +13,7 @@ const logger = require('../utils/logger');
 /**
  * 获取待处理订单列表
  */
-router.get('/orders', [
+router.get('/api/orders', [
   validatorQuery('status').optional().isIn(['pending', 'confirmed', 'preparing', 'ready', 'served']).withMessage('状态值无效'),
   validatorQuery('page').optional().isInt({ min: 1 }).withMessage('页码必须是正整数'),
   validatorQuery('limit').optional().isInt({ min: 1, max: 100 }).withMessage('每页数量必须在1-100之间')
@@ -141,7 +141,7 @@ router.get('/orders', [
 /**
  * 更新订单状态
  */
-router.put('/orders/:orderId/status', [
+router.put('/api/orders/:orderId/status', [
   param('orderId').isString().withMessage('订单ID不能为空'),
   body('status').isIn(['confirmed', 'preparing', 'ready', 'served', 'cancelled']).withMessage('状态值无效'),
   body('actual_time').optional().isInt({ min: 0 }).withMessage('实际制作时间必须是非负整数'),
@@ -282,7 +282,7 @@ router.put('/orders/:orderId/status', [
 /**
  * 更新单个订单项状态
  */
-router.put('/order-items/:itemId/status', [
+router.put('/api/order-items/:itemId/status', [
   param('itemId').isInt({ min: 1 }).withMessage('订单项ID必须是正整数'),
   body('status').isIn(['preparing', 'ready', 'served', 'cancelled']).withMessage('状态值无效')
 ], handleValidationErrors, asyncHandler(async (req, res) => {
@@ -374,7 +374,7 @@ router.put('/order-items/:itemId/status', [
 /**
  * 获取菜品分类统计
  */
-router.get('/stats/categories', [
+router.get('/api/stats/categories', [
   validatorQuery('date_from').optional().isDate().withMessage('开始日期格式无效'),
   validatorQuery('date_to').optional().isDate().withMessage('结束日期格式无效')
 ], handleValidationErrors, asyncHandler(async (req, res) => {
@@ -428,7 +428,7 @@ router.get('/stats/categories', [
 /**
  * 获取热销菜品
  */
-router.get('/stats/popular-items', [
+router.get('/api/stats/popular-items', [
   validatorQuery('limit').optional().isInt({ min: 1, max: 50 }).withMessage('限制数量必须在1-50之间'),
   validatorQuery('date_from').optional().isDate().withMessage('开始日期格式无效'),
   validatorQuery('date_to').optional().isDate().withMessage('结束日期格式无效')
@@ -493,7 +493,7 @@ router.get('/stats/popular-items', [
 /**
  * 获取今日统计
  */
-router.get('/stats/today', asyncHandler(async (req, res) => {
+router.get('/api/stats/today', asyncHandler(async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
   
   // 获取今日订单统计
@@ -562,7 +562,7 @@ router.get('/stats/today', asyncHandler(async (req, res) => {
 /**
  * 获取实时监控数据
  */
-router.get('/dashboard/realtime', asyncHandler(async (req, res) => {
+router.get('/api/dashboard/realtime', asyncHandler(async (req, res) => {
   // 获取待处理订单数
   const [pendingOrders] = await dbQuery(`
     SELECT COUNT(*) as count

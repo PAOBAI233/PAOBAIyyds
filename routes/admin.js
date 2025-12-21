@@ -30,7 +30,7 @@ const requireAdmin = (req, res, next) => {
 /**
  * 获取餐厅信息
  */
-router.get('/restaurant', requireAdmin, asyncHandler(async (req, res) => {
+router.get('/api/restaurant', requireAdmin, asyncHandler(async (req, res) => {
   const [restaurant] = await dbQuery('SELECT * FROM restaurants WHERE id = 1');
   
   if (!restaurant) {
@@ -49,7 +49,7 @@ router.get('/restaurant', requireAdmin, asyncHandler(async (req, res) => {
 /**
  * 更新餐厅信息
  */
-router.put('/restaurant', requireAdmin, [
+router.put('/api/restaurant', requireAdmin, [
   body('name').optional().isString().trim().isLength({ min: 1, max: 100 }).withMessage('餐厅名称长度必须在1-100之间'),
   body('description').optional().isString().trim().isLength({ max: 500 }).withMessage('描述长度不能超过500字符'),
   body('address').optional().isString().trim().isLength({ min: 1, max: 255 }).withMessage('地址长度必须在1-255之间'),
@@ -87,7 +87,7 @@ router.put('/restaurant', requireAdmin, [
 /**
  * 获取桌台列表
  */
-router.get('/tables', requireAdmin, [
+router.get('/api/tables', requireAdmin, [
   validatorQuery('status').optional().isIn(['available', 'occupied', 'reserved', 'cleaning']).withMessage('状态值无效'),
   validatorQuery('page').optional().isInt({ min: 1 }).withMessage('页码必须是正整数'),
   validatorQuery('limit').optional().isInt({ min: 1, max: 100 }).withMessage('每页数量必须在1-100之间')
@@ -162,7 +162,7 @@ router.get('/tables', requireAdmin, [
 /**
  * 创建桌台
  */
-router.post('/tables', requireAdmin, [
+router.post('/api/tables', requireAdmin, [
   body('table_number').isString().trim().isLength({ min: 1, max: 20 }).withMessage('桌台号长度必须在1-20之间'),
   body('table_name').optional().isString().trim().isLength({ max: 50 }).withMessage('桌台名称长度不能超过50字符'),
   body('capacity').isInt({ min: 1, max: 20 }).withMessage('可容纳人数必须在1-20之间'),
@@ -204,7 +204,7 @@ router.post('/tables', requireAdmin, [
 /**
  * 更新桌台
  */
-router.put('/tables/:id', requireAdmin, [
+router.put('/api/tables/:id', requireAdmin, [
   param('id').isInt({ min: 1 }).withMessage('桌台ID必须是正整数'),
   body('table_name').optional().isString().trim().isLength({ max: 50 }).withMessage('桌台名称长度不能超过50字符'),
   body('capacity').optional().isInt({ min: 1, max: 20 }).withMessage('可容纳人数必须在1-20之间'),
@@ -252,7 +252,7 @@ router.put('/tables/:id', requireAdmin, [
 /**
  * 获取菜品分类列表
  */
-router.get('/categories', requireAdmin, asyncHandler(async (req, res) => {
+router.get('/api/categories', requireAdmin, asyncHandler(async (req, res) => {
   const categories = await dbQuery(`
     SELECT 
       c.*,
@@ -273,7 +273,7 @@ router.get('/categories', requireAdmin, asyncHandler(async (req, res) => {
 /**
  * 创建菜品分类
  */
-router.post('/categories', requireAdmin, [
+router.post('/api/categories', requireAdmin, [
   body('name').isString().trim().isLength({ min: 1, max: 50 }).withMessage('分类名称长度必须在1-50之间'),
   body('description').optional().isString().trim().isLength({ max: 255 }).withMessage('描述长度不能超过255字符'),
   body('sort_order').optional().isInt({ min: 0 }).withMessage('排序顺序必须是非负整数')
@@ -312,7 +312,7 @@ router.post('/categories', requireAdmin, [
 /**
  * 获取菜品列表
  */
-router.get('/menu-items', requireAdmin, [
+router.get('/api/menu-items', requireAdmin, [
   validatorQuery('category_id').optional().isInt({ min: 1 }).withMessage('分类ID必须是正整数'),
   validatorQuery('is_available').optional().isBoolean().withMessage('可用状态必须是布尔值'),
   validatorQuery('page').optional().isInt({ min: 1 }).withMessage('页码必须是正整数'),
@@ -395,7 +395,7 @@ router.get('/menu-items', requireAdmin, [
 /**
  * 创建菜品
  */
-router.post('/menu-items', requireAdmin, [
+router.post('/api/menu-items', requireAdmin, [
   body('category_id').isInt({ min: 1 }).withMessage('分类ID必须是正整数'),
   body('name').isString().trim().isLength({ min: 1, max: 100 }).withMessage('菜品名称长度必须在1-100之间'),
   body('description').optional().isString().trim().isLength({ max: 255 }).withMessage('描述长度不能超过255字符'),
@@ -463,7 +463,7 @@ router.post('/menu-items', requireAdmin, [
 /**
  * 更新菜品
  */
-router.put('/menu-items/:id', requireAdmin, [
+router.put('/api/menu-items/:id', requireAdmin, [
   param('id').isInt({ min: 1 }).withMessage('菜品ID必须是正整数'),
   body('name').optional().isString().trim().isLength({ min: 1, max: 100 }).withMessage('菜品名称长度必须在1-100之间'),
   body('price').optional().isFloat({ min: 0 }).withMessage('价格必须大于等于0')
@@ -525,7 +525,7 @@ router.put('/menu-items/:id', requireAdmin, [
 /**
  * 删除菜品
  */
-router.delete('/menu-items/:id', requireAdmin, [
+router.delete('/api/menu-items/:id', requireAdmin, [
   param('id').isInt({ min: 1 }).withMessage('菜品ID必须是正整数')
 ], handleValidationErrors, asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -568,7 +568,7 @@ router.delete('/menu-items/:id', requireAdmin, [
 /**
  * 获取订单统计
  */
-router.get('/stats/overview', requireAdmin, [
+router.get('/api/stats/overview', requireAdmin, [
   validatorQuery('date_from').optional().isDate().withMessage('开始日期格式无效'),
   validatorQuery('date_to').optional().isDate().withMessage('结束日期格式无效')
 ], handleValidationErrors, asyncHandler(async (req, res) => {
@@ -639,9 +639,122 @@ router.get('/stats/overview', requireAdmin, [
 });
 
 /**
+ * 获取热销菜品统计
+ */
+router.get('/api/stats/popular-items', requireAdmin, [
+  validatorQuery('limit').optional().isInt({ min: 1, max: 50 }).withMessage('限制数量必须在1-50之间'),
+  validatorQuery('date_from').optional().isDate().withMessage('开始日期格式无效'),
+  validatorQuery('date_to').optional().isDate().withMessage('结束日期格式无效')
+], handleValidationErrors, asyncHandler(async (req, res) => {
+  const { limit = 10, date_from, date_to } = req.query;
+  
+  let whereClause = 'WHERE o.restaurant_id = 1 AND o.status IN (?, ?)';
+  const params = ['served', 'completed'];
+  
+  if (date_from) {
+    whereClause += ' AND DATE(o.created_at) >= ?';
+    params.push(date_from);
+  }
+  
+  if (date_to) {
+    whereClause += ' AND DATE(o.created_at) <= ?';
+    params.push(date_to);
+  }
+  
+  const sql = `
+    SELECT 
+      mi.id,
+      mi.name,
+      mi.price,
+      mi.image_url,
+      c.name as category_name,
+      COUNT(oi.id) as order_count,
+      SUM(oi.quantity) as total_quantity,
+      SUM(oi.subtotal) as total_amount,
+      AVG(oi.subtotal / oi.quantity) as avg_price
+    FROM order_items oi
+    LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+    LEFT JOIN categories c ON mi.category_id = c.id
+    LEFT JOIN orders o ON oi.order_id = o.id
+    ${whereClause}
+    GROUP BY mi.id, mi.name, mi.price, mi.image_url, c.name
+    HAVING total_quantity > 0
+    ORDER BY total_quantity DESC, total_amount DESC
+    LIMIT ?
+  `;
+  
+  const items = await dbQuery(sql, [...params, parseInt(limit)]);
+  
+  res.json({
+    success: true,
+    data: {
+      items: items.map(item => ({
+        id: item.id,
+        name: item.name,
+        total_amount: item.total_amount,
+        total_quantity: item.total_quantity
+      }))
+    }
+  });
+}));
+
+/**
+ * 获取分类统计
+ */
+router.get('/api/stats/categories', requireAdmin, [
+  validatorQuery('date_from').optional().isDate().withMessage('开始日期格式无效'),
+  validatorQuery('date_to').optional().isDate().withMessage('结束日期格式无效')
+], handleValidationErrors, asyncHandler(async (req, res) => {
+  const { date_from, date_to } = req.query;
+  
+  let whereClause = 'WHERE o.restaurant_id = 1 AND o.status IN (?, ?)';
+  const params = ['served', 'completed'];
+  
+  if (date_from) {
+    whereClause += ' AND DATE(o.created_at) >= ?';
+    params.push(date_from);
+  }
+  
+  if (date_to) {
+    whereClause += ' AND DATE(o.created_at) <= ?';
+    params.push(date_to);
+  }
+  
+  const sql = `
+    SELECT 
+      c.id,
+      c.name as name,
+      COUNT(oi.id) as item_count,
+      SUM(oi.quantity) as total_quantity,
+      SUM(oi.subtotal) as total_amount
+    FROM order_items oi
+    LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+    LEFT JOIN categories c ON mi.category_id = c.id
+    LEFT JOIN orders o ON oi.order_id = o.id
+    ${whereClause}
+    GROUP BY c.id, c.name
+    ORDER BY total_amount DESC
+  `;
+  
+  const categories = await dbQuery(sql, params);
+  
+  res.json({
+    success: true,
+    data: {
+      categories: categories.map(category => ({
+        id: category.id,
+        name: category.name,
+        total_amount: category.total_amount,
+        item_count: category.item_count
+      }))
+    }
+  });
+});
+
+/**
  * 获取打印任务历史
  */
-router.get('/print-jobs', requireAdmin, [
+router.get('/api/print-jobs', requireAdmin, [
   validatorQuery('status').optional().isIn(['pending', 'printing', 'success', 'failed']).withMessage('状态值无效'),
   validatorQuery('page').optional().isInt({ min: 1 }).withMessage('页码必须是正整数'),
   validatorQuery('limit').optional().isInt({ min: 1, max: 100 }).withMessage('每页数量必须在1-100之间')
@@ -707,7 +820,7 @@ router.get('/print-jobs', requireAdmin, [
 /**
  * 重试打印任务
  */
-router.post('/print-jobs/:id/retry', requireAdmin, [
+router.post('/api/print-jobs/:id/retry', requireAdmin, [
   param('id').isString().withMessage('打印任务ID不能为空')
 ], handleValidationErrors, asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -785,5 +898,69 @@ router.post('/print-jobs/:id/retry', requireAdmin, [
     });
   }
 });
+
+/**
+ * 获取订单列表
+ */
+router.get('/api/orders', requireAdmin, [
+  validatorQuery('status').optional().isIn(['pending', 'confirmed', 'preparing', 'ready', 'served', 'cancelled']).withMessage('状态值无效'),
+  validatorQuery('page').optional().isInt({ min: 1 }).withMessage('页码必须是正整数'),
+  validatorQuery('limit').optional().isInt({ min: 1, max: 100 }).withMessage('每页数量必须在1-100之间')
+], handleValidationErrors, asyncHandler(async (req, res) => {
+  const { status, page = 1, limit = 50 } = req.query;
+  
+  let whereClause = 'WHERE o.restaurant_id = 1';
+  const params = [];
+  
+  if (status) {
+    whereClause += ' AND o.status = ?';
+    params.push(status);
+  }
+  
+  const offset = (page - 1) * limit;
+  
+  const sql = `
+    SELECT 
+      o.*,
+      t.table_number,
+      t.table_name
+    FROM orders o
+    LEFT JOIN tables t ON o.table_id = t.id
+    ${whereClause}
+    ORDER BY o.created_at DESC
+    LIMIT ? OFFSET ?
+  `;
+  
+  const orders = await dbQuery(sql, [...params, parseInt(limit), offset]);
+  
+  // 获取总数
+  const countSql = `
+    SELECT COUNT(*) as total 
+    FROM orders o 
+    ${whereClause}
+  `;
+  const [{ total }] = await dbQuery(countSql, params);
+  
+  res.json({
+    success: true,
+    data: {
+      orders: orders.map(order => ({
+        id: order.id,
+        order_no: order.order_no,
+        table_number: order.table_number,
+        table_name: order.table_name,
+        total_amount: order.total_amount,
+        status: order.status,
+        created_at: order.created_at
+      })),
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    }
+  });
+}));
 
 module.exports = router;

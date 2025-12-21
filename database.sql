@@ -1,12 +1,14 @@
 -- 范式转换餐饮系统数据库设计
 -- 数据库名称: paobai_restaurant
+-- 临时关闭外键检查（兼容外键依赖修改）
+SET FOREIGN_KEY_CHECKS = 0;
 
 -- 创建数据库
 CREATE DATABASE IF NOT EXISTS paobai_restaurant DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE paobai_restaurant;
 
 -- 1. 餐厅信息表
-CREATE TABLE restaurants (
+CREATE TABLE IF NOT EXISTS restaurants (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL COMMENT '餐厅名称',
     logo VARCHAR(255) DEFAULT NULL COMMENT '餐厅Logo图片URL',
@@ -21,13 +23,13 @@ CREATE TABLE restaurants (
     INDEX idx_status (status)
 ) COMMENT '餐厅信息表';
 
--- 2. 桌台表
-CREATE TABLE tables (
+-- 2. 桌台表（删除无效的ALTER语句，直接在CREATE中定义字段，解决IF EXISTS和关键字冲突）
+CREATE TABLE IF NOT EXISTS `tables` (
     id INT PRIMARY KEY AUTO_INCREMENT,
     restaurant_id INT NOT NULL,
     table_number VARCHAR(20) NOT NULL COMMENT '桌台号',
     table_name VARCHAR(50) COMMENT '桌台名称',
-    qr_code VARCHAR(255) NOT NULL COMMENT '二维码内容',
+    qr_code VARCHAR(255) NOT NULL DEFAULT 'https://paobai.cn/order/default' COMMENT '二维码内容',
     capacity INT DEFAULT 4 COMMENT '可容纳人数',
     table_type ENUM('normal', 'vip', 'private') DEFAULT 'normal' COMMENT '桌台类型',
     status ENUM('available', 'occupied', 'reserved', 'cleaning') DEFAULT 'available' COMMENT '桌台状态',
@@ -41,7 +43,7 @@ CREATE TABLE tables (
 ) COMMENT '桌台表';
 
 -- 3. 菜品分类表
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     id INT PRIMARY KEY AUTO_INCREMENT,
     restaurant_id INT NOT NULL,
     name VARCHAR(50) NOT NULL COMMENT '分类名称',
@@ -56,7 +58,7 @@ CREATE TABLE categories (
 ) COMMENT '菜品分类表';
 
 -- 4. 菜品表
-CREATE TABLE menu_items (
+CREATE TABLE IF NOT EXISTS menu_items (
     id INT PRIMARY KEY AUTO_INCREMENT,
     restaurant_id INT NOT NULL,
     category_id INT NOT NULL,
@@ -83,7 +85,8 @@ CREATE TABLE menu_items (
 ) COMMENT '菜品表';
 
 -- 5. 用餐会话表
-CREATE TABLE dining_sessions (
+-- 已添加存储型生成列 created_date 用于按日期建立索引（兼容 MySQL 5.7+）
+CREATE TABLE IF NOT EXISTS dining_sessions (
     id VARCHAR(50) PRIMARY KEY COMMENT '会话ID',
     restaurant_id INT NOT NULL,
     table_id INT NOT NULL,
@@ -98,16 +101,19 @@ CREATE TABLE dining_sessions (
     total_amount DECIMAL(10,2) DEFAULT 0.00 COMMENT '总金额',
     paid_amount DECIMAL(10,2) DEFAULT 0.00 COMMENT '已付金额',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- 存储型生成列：存储 created_at 的日期部分，便于按日期索引（可被索引）
+    created_date DATE GENERATED ALWAYS AS (DATE(created_at)) STORED,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
-    FOREIGN KEY (table_id) REFERENCES tables(id),
+    FOREIGN KEY (table_id) REFERENCES `tables`(id),
     INDEX idx_table_status (table_id, status),
     INDEX idx_leader (leader_openid),
-    INDEX idx_created (created_at)
+    INDEX idx_created (created_at),
+    INDEX idx_dining_sessions_date (created_date)
 ) COMMENT '用餐会话表';
 
 -- 6. 用餐者表
-CREATE TABLE diners (
+CREATE TABLE IF NOT EXISTS diners (
     id INT PRIMARY KEY AUTO_INCREMENT,
     session_id VARCHAR(50) NOT NULL,
     openid VARCHAR(50) NOT NULL COMMENT '用户唯一标识',
@@ -123,7 +129,7 @@ CREATE TABLE diners (
 ) COMMENT '用餐者表';
 
 -- 7. 订单表
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
     id VARCHAR(50) PRIMARY KEY COMMENT '订单ID',
     session_id VARCHAR(50) NOT NULL,
     restaurant_id INT NOT NULL,
@@ -144,7 +150,7 @@ CREATE TABLE orders (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (session_id) REFERENCES dining_sessions(id),
     FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
-    FOREIGN KEY (table_id) REFERENCES tables(id),
+    FOREIGN KEY (table_id) REFERENCES `tables`(id),
     UNIQUE KEY uk_order_no (order_no),
     INDEX idx_session_status (session_id, status),
     INDEX idx_restaurant_status (restaurant_id, status),
@@ -153,7 +159,7 @@ CREATE TABLE orders (
 ) COMMENT '订单表';
 
 -- 8. 订单项表
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
     id INT PRIMARY KEY AUTO_INCREMENT,
     order_id VARCHAR(50) NOT NULL,
     menu_item_id INT NOT NULL,
@@ -173,7 +179,7 @@ CREATE TABLE order_items (
 ) COMMENT '订单项表';
 
 -- 9. 支付记录表
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS payments (
     id VARCHAR(50) PRIMARY KEY COMMENT '支付ID',
     session_id VARCHAR(50) NOT NULL,
     order_ids TEXT COMMENT '关联订单ID列表(JSON)',
@@ -197,7 +203,7 @@ CREATE TABLE payments (
 ) COMMENT '支付记录表';
 
 -- 10. AA制分账明细表
-CREATE TABLE aa_split_details (
+CREATE TABLE IF NOT EXISTS aa_split_details (
     id INT PRIMARY KEY AUTO_INCREMENT,
     payment_id VARCHAR(50) NOT NULL,
     session_id VARCHAR(50) NOT NULL,
@@ -218,7 +224,7 @@ CREATE TABLE aa_split_details (
 ) COMMENT 'AA制分账明细表';
 
 -- 11. 系统配置表
-CREATE TABLE system_configs (
+CREATE TABLE IF NOT EXISTS system_configs (
     id INT PRIMARY KEY AUTO_INCREMENT,
     config_key VARCHAR(100) NOT NULL,
     config_value TEXT,
@@ -231,7 +237,7 @@ CREATE TABLE system_configs (
 ) COMMENT '系统配置表';
 
 -- 12. 打印任务表
-CREATE TABLE print_jobs (
+CREATE TABLE IF NOT EXISTS print_jobs (
     id VARCHAR(50) PRIMARY KEY COMMENT '打印任务ID',
     restaurant_id INT NOT NULL,
     order_id VARCHAR(50) COMMENT '关联订单ID',
@@ -254,7 +260,14 @@ CREATE TABLE print_jobs (
 
 -- 插入默认餐厅数据
 INSERT INTO restaurants (id, name, description, address, phone, business_hours, status) 
-VALUES (1, '范式转换演示餐厅', '智能点餐系统演示餐厅', '中国·广西·示范地址', '18677275508', '09:00-22:00', 1);
+VALUES (1, '范式转换演示餐厅', '智能点餐系统演示餐厅', '中国·广西·示范地址', '18677275508', '09:00-22:00', 1)
+ON DUPLICATE KEY UPDATE 
+name = VALUES(name), 
+description = VALUES(description), 
+address = VALUES(address), 
+phone = VALUES(phone), 
+business_hours = VALUES(business_hours), 
+status = VALUES(status);
 
 -- 插入默认菜品分类
 INSERT INTO categories (restaurant_id, name, sort_order) VALUES 
@@ -263,7 +276,9 @@ INSERT INTO categories (restaurant_id, name, sort_order) VALUES
 (1, '汤羹', 3),
 (1, '主食', 4),
 (1, '饮品', 5),
-(1, '小吃', 6);
+(1, '小吃', 6)
+ON DUPLICATE KEY UPDATE 
+sort_order = VALUES(sort_order);
 
 -- 插入示例菜品数据
 INSERT INTO menu_items (restaurant_id, category_id, name, description, price, unit, sort_order, is_available) VALUES 
@@ -272,44 +287,50 @@ INSERT INTO menu_items (restaurant_id, category_id, name, description, price, un
 (1, 1, '麻婆豆腐', '四川名菜，嫩滑豆腐配麻辣肉末', 28.00, '份', 2, 1),
 (1, 1, '回锅肉', '四川传统名菜', 42.00, '份', 3, 1),
 (1, 1, '糖醋排骨', '酸甜可口的经典菜品', 48.00, '份', 4, 1),
-
 -- 凉菜
 (1, 2, '拍黄瓜', '清爽解腻', 18.00, '份', 1, 1),
 (1, 2, '口水鸡', '四川特色凉菜', 32.00, '份', 2, 1),
 (1, 2, '凉拌木耳', '健康美味', 22.00, '份', 3, 1),
-
 -- 汤羹
 (1, 3, '紫菜蛋花汤', '清淡营养', 16.00, '份', 1, 1),
 (1, 3, '酸辣汤', '开胃爽口', 20.00, '份', 2, 1),
 (1, 3, '冬瓜排骨汤', '滋补养生', 35.00, '份', 3, 1),
-
 -- 主食
 (1, 4, '白米饭', '东北大米', 3.00, '碗', 1, 1),
 (1, 4, '炒饭', '扬州炒饭', 18.00, '份', 2, 1),
 (1, 4, '面条', '手工拉面', 15.00, '碗', 3, 1),
-
 -- 饮品
 (1, 5, '可乐', '冰镇可乐', 8.00, '瓶', 1, 1),
 (1, 5, '雪碧', '冰镇雪碧', 8.00, '瓶', 2, 1),
 (1, 5, '橙汁', '鲜榨橙汁', 12.00, '杯', 3, 1),
-
 -- 小吃
 (1, 6, '春卷', '传统小吃', 15.00, '份', 1, 1),
 (1, 6, '薯条', '美式快餐', 12.00, '份', 2, 1),
-(1, 6, '饺子', '手工水饺', 18.00, '份', 3, 1);
+(1, 6, '饺子', '手工水饺', 18.00, '份', 3, 1)
+ON DUPLICATE KEY UPDATE 
+description = VALUES(description), 
+price = VALUES(price), 
+unit = VALUES(unit), 
+sort_order = VALUES(sort_order), 
+is_available = VALUES(is_available);
 
--- 插入默认桌台数据
-INSERT INTO tables (restaurant_id, table_number, table_name, capacity, status) VALUES 
-(1, '01', '一号桌', 4, 'available'),
-(1, '02', '二号桌', 4, 'available'),
-(1, '03', '三号桌', 2, 'available'),
-(1, '04', '四号桌', 6, 'available'),
-(1, '05', '五号桌', 8, 'available'),
-(1, '06', '六号桌', 4, 'available'),
-(1, '07', '七号桌', 2, 'available'),
-(1, '08', '八号桌', 10, 'available'),
-(1, 'VIP01', 'VIP包间1', 8, 'available'),
-(1, 'VIP02', 'VIP包间2', 12, 'available');
+-- 插入默认桌台数据（显式包含qr_code字段）
+INSERT INTO `tables` (restaurant_id, table_number, table_name, qr_code, capacity, status) VALUES 
+(1, '01', '一号桌', 'https://paobai.cn/order/01', 4, 'available'),
+(1, '02', '二号桌', 'https://paobai.cn/order/02', 4, 'available'),
+(1, '03', '三号桌', 'https://paobai.cn/order/03', 2, 'available'),
+(1, '04', '四号桌', 'https://paobai.cn/order/04', 6, 'available'),
+(1, '05', '五号桌', 'https://paobai.cn/order/05', 8, 'available'),
+(1, '06', '六号桌', 'https://paobai.cn/order/06', 4, 'available'),
+(1, '07', '七号桌', 'https://paobai.cn/order/07', 2, 'available'),
+(1, '08', '八号桌', 'https://paobai.cn/order/08', 10, 'available'),
+(1, 'VIP01', 'VIP包间1', 'https://paobai.cn/order/VIP01', 8, 'available'),
+(1, 'VIP02', 'VIP包间2', 'https://paobai.cn/order/VIP02', 12, 'available')
+ON DUPLICATE KEY UPDATE 
+table_name = VALUES(table_name), 
+qr_code = VALUES(qr_code),
+capacity = VALUES(capacity), 
+status = VALUES(status);
 
 -- 插入系统配置
 INSERT INTO system_configs (config_key, config_value, description) VALUES 
@@ -319,50 +340,36 @@ INSERT INTO system_configs (config_key, config_value, description) VALUES
 ('auto_print', '1', '自动打印订单'),
 ('qr_code_base', 'https://paobai.cn/order/', '二维码基础URL'),
 ('session_timeout', '7200', '会话超时时间(秒)'),
-('aa_min_amount', '1.00', 'AA制最小支付金额');
+('aa_min_amount', '1.00', 'AA制最小支付金额')
+ON DUPLICATE KEY UPDATE 
+config_value = VALUES(config_value), 
+description = VALUES(description);
 
--- 创建视图：订单详情视图
+-- ========== 修正后的视图创建语句 ==========
+-- 创建视图：订单详情视图（单行+简化分隔符）
+DROP VIEW IF EXISTS order_details;
 CREATE VIEW order_details AS
-SELECT 
-    o.id as order_id,
-    o.order_no,
-    o.session_id,
-    o.table_id,
-    t.table_number,
-    o.total_amount,
-    o.item_count,
-    o.status as order_status,
-    o.special_requests,
-    o.created_at as order_time,
-    d.total_customers,
-    d.leader_nickname,
-    GROUP_CONCAT(
-        CONCAT(mi.name, ' x', oi.quantity, ' ', oi.special_instructions) 
-        SEPARATOR '; '
-    ) as items_detail
+SELECT o.id as order_id, o.order_no, o.session_id, o.table_id, t.table_number, o.total_amount, o.item_count, o.status as order_status, o.special_requests, o.created_at as order_time, d.total_customers, d.leader_nickname, GROUP_CONCAT(CONCAT(mi.name, ' x', oi.quantity, ' ', IFNULL(oi.special_instructions, '')) SEPARATOR '| ') as items_detail
 FROM orders o
 JOIN dining_sessions d ON o.session_id = d.id
-JOIN tables t ON o.table_id = t.id
+JOIN `tables` t ON o.table_id = t.id
 LEFT JOIN order_items oi ON o.id = oi.order_id
 LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
-GROUP BY o.id, o.order_no, o.session_id, o.table_id, t.table_number, 
-         o.total_amount, o.item_count, o.status, o.special_requests, 
-         o.created_at, d.total_customers, d.leader_nickname;
+GROUP BY o.id, o.order_no, o.session_id, o.table_id, t.table_number, o.total_amount, o.item_count, o.status, o.special_requests, o.created_at, d.total_customers, d.leader_nickname;
 
--- 创建视图：会话统计视图
+-- 创建视图：会话统计视图（单行写法）
+DROP VIEW IF EXISTS session_statistics;
 CREATE VIEW session_statistics AS
-SELECT 
-    DATE(created_at) as date,
-    COUNT(*) as total_sessions,
-    SUM(total_amount) as total_revenue,
-    AVG(total_amount) as avg_amount,
-    SUM(total_customers) as total_customers
+SELECT DATE(created_at) as date, COUNT(*) as total_sessions, SUM(total_amount) as total_revenue, AVG(total_amount) as avg_amount, SUM(total_customers) as total_customers
 FROM dining_sessions
 WHERE status IN ('paid', 'completed')
 GROUP BY DATE(created_at);
+-- ========== 视图创建结束 ==========
 
--- 创建索引优化查询性能
-CREATE INDEX idx_dining_sessions_date ON dining_sessions(DATE(created_at));
+-- 创建索引（兼容MySQL 5.x，已在表内为 dining_sessions 创建 created_date 索引，因此移除原有函数索引）
 CREATE INDEX idx_orders_created_status ON orders(created_at, status);
 CREATE INDEX idx_payments_created ON payments(created_at);
 CREATE INDEX idx_print_jobs_created ON print_jobs(created_at);
+
+-- 恢复外键检查
+SET FOREIGN_KEY_CHECKS = 1;

@@ -41,7 +41,7 @@ router.get('/restaurant/info', asyncHandler(async (req, res) => {
       business_hours: restaurant.business_hours
     }
   });
-});
+}));
 
 /**
  * 获取菜品分类
@@ -59,7 +59,7 @@ router.get('/menu/categories', asyncHandler(async (req, res) => {
     success: true,
     data: categories
   });
-});
+}));
 
 /**
  * 获取菜品列表
@@ -114,7 +114,7 @@ router.get('/menu/items', [
       }
     }
   });
-});
+}));
 
 /**
  * 获取菜品详情
@@ -146,7 +146,7 @@ router.get('/menu/items/:id', [
     success: true,
     data: item
   });
-});
+}));
 
 /**
  * 获取桌台信息（通过二维码）
@@ -187,7 +187,7 @@ router.get('/tables/qr/:qr_code', [
       }
     }
   });
-});
+}));
 
 /**
  * 创建用餐会话
@@ -264,7 +264,7 @@ router.post('/sessions', [
     await dbQuery('ROLLBACK');
     throw error;
   }
-});
+}));
 
 /**
  * 加入用餐会话
@@ -349,7 +349,7 @@ router.post('/sessions/:sessionId/join', [
       }
     }
   });
-});
+}));
 
 /**
  * 获取会话信息
@@ -435,7 +435,7 @@ router.get('/sessions/:sessionId', [
       }))
     }
   });
-});
+}));
 
 /**
  * 打印测试
@@ -456,7 +456,7 @@ router.post('/print/test', asyncHandler(async (req, res) => {
       error: result.message
     });
   }
-});
+}));
 
 /**
  * 健康检查

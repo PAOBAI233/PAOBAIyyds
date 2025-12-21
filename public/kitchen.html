@@ -337,7 +337,10 @@
         // API 调用函数
         async function apiCall(url, options = {}) {
             try {
-                const response = await fetch(`/kitchen${url}`, {
+                const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                    ? '' 
+                    : 'http://localhost:3000';
+                const response = await fetch(`${API_BASE_URL}/kitchen/api${url}`, {
                     headers: {
                         'Content-Type': 'application/json',
                         ...options.headers

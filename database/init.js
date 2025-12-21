@@ -14,10 +14,7 @@ const dbConfig = {
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   charset: process.env.DB_CHARSET || 'utf8mb4',
-  timezone: process.env.DB_TIMEZONE || '+08:00',
-  acquireTimeout: 60000,
-  timeout: 60000,
-  reconnect: true
+  timezone: process.env.DB_TIMEZONE || '+08:00'
 };
 
 let pool = null;
@@ -35,8 +32,7 @@ async function initPool() {
 
     // 创建数据库
     const dbName = process.env.DB_NAME || 'paobai_restaurant';
-    await connection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
-    await connection.execute(`USE \`${dbName}\``);
+    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
     await connection.end();
 
     // 创建连接池
@@ -80,9 +76,25 @@ async function executeSqlFile(sqlFilePath) {
 
     const connection = await pool.getConnection();
     
-    for (const statement of statements) {
+    for (let i = 0; i < statements.length; i++) {
+      const statement = statements[i];
       if (statement) {
-        await connection.execute(statement);
+        try {
+          await connection.query(statement);
+        } catch (error) {
+          // 忽略重复索引和表已存在的错误
+          if (error.code === 'ER_DUP_KEYNAME' || // 重复索引
+              error.code === 'ER_TABLE_EXISTS_ERROR' || // 表已存在
+              error.code === 'ER_DUP_ENTRY') { // 重复条目
+            logger.warn(`SQL语句 ${i + 1}/${statements.length} 已存在，跳过: ${error.message}`);
+          } else {
+            logger.error(`执行SQL语句 ${i + 1}/${statements.length} 失败`, {
+              sql: statement,
+              error: error.message
+            });
+            throw error;
+          }
+        }
       }
     }
     

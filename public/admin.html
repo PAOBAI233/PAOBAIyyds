@@ -311,7 +311,7 @@
                 <section id="settingsSection" class="content-section hidden">
                     <div class="bg-white rounded-lg shadow p-6">
                         <h3 class="text-lg font-bold mb-4">餐厅信息</h3>
-                        <form id="restaurantForm" class="space-y-4">
+                        <form id="restaurantForm" onsubmit="saveRestaurantSettings()" class="space-y-4">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">餐厅名称</label>
@@ -421,7 +421,10 @@
         // API 调用函数
         async function apiCall(url, options = {}) {
             try {
-                const response = await fetch(`/admin${url}`, {
+                const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                    ? '' 
+                    : 'http://localhost:3000';
+                const response = await fetch(`${API_BASE_URL}/admin/api${url}`, {
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer admin_token'
@@ -801,12 +804,174 @@
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', initApp);
 
+        // 加载餐厅设置
+        async function loadRestaurantSettings() {
+            try {
+                const data = await apiCall('/restaurant');
+                const restaurant = data.data;
+                
+                document.getElementById('restaurantName').value = restaurant.name || '';
+                document.getElementById('restaurantPhone').value = restaurant.phone || '';
+                document.getElementById('restaurantAddress').value = restaurant.address || '';
+                document.getElementById('restaurantHours').value = restaurant.business_hours || '';
+                document.getElementById('restaurantDescription').value = restaurant.description || '';
+                
+            } catch (error) {
+                console.error('加载餐厅设置失败:', error);
+            }
+        }
+
+        // 保存餐厅设置
+        async function saveRestaurantSettings() {
+            event.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('restaurantName').value,
+                phone: document.getElementById('restaurantPhone').value,
+                address: document.getElementById('restaurantAddress').value,
+                business_hours: document.getElementById('restaurantHours').value,
+                description: document.getElementById('restaurantDescription').value
+            };
+            
+            try {
+                await apiCall('/restaurant', {
+                    method: 'PUT',
+                    body: JSON.stringify(formData)
+                });
+                
+                showToast('餐厅设置保存成功');
+                
+            } catch (error) {
+                console.error('保存餐厅设置失败:', error);
+            }
+        }
+
+        // 加载订单列表
+        async function loadOrders() {
+            try {
+                const data = await apiCall('/orders?limit=100');
+                state.orders = data.data.orders || [];
+                
+                document.getElementById('ordersList').innerHTML = state.orders.map(order => `
+                    <tr class="table-row">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ${order.order_no}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${order.table_number || '-'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${formatPrice(order.total_amount)}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="status-badge status-${order.status}">
+                                ${getStatusText(order.status)}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${formatTime(order.created_at)}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="viewOrder('${order.id}')" class="text-blue-600 hover:text-blue-900">
+                                <i class="ri-eye-line"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+            } catch (error) {
+                console.error('加载订单失败:', error);
+            }
+        }
+
+        // 加载打印任务
+        async function loadPrintJobs() {
+            try {
+                const data = await apiCall('/print-jobs?limit=50');
+                state.printJobs = data.data.jobs || [];
+                
+                document.getElementById('printJobsList').innerHTML = state.printJobs.map(job => `
+                    <tr class="table-row">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ${job.id}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${job.order_no || '-'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${job.table_number || '-'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="status-badge status-${job.status}">
+                                ${job.status === 'success' ? '成功' : 
+                                  job.status === 'failed' ? '失败' : 
+                                  job.status === 'pending' ? '待打印' : '打印中'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${formatTime(job.created_at)}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            ${job.status === 'failed' ? `
+                                <button onclick="retryPrintJob('${job.id}')" class="text-blue-600 hover:text-blue-900 mr-3">
+                                    <i class="ri-refresh-line"></i> 重试
+                                </button>
+                            ` : ''}
+                            <button onclick="viewPrintJob('${job.id}')" class="text-gray-600 hover:text-gray-900">
+                                <i class="ri-eye-line"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+            } catch (error) {
+                console.error('加载打印任务失败:', error);
+            }
+        }
+
+        // 加载菜品分类（用于菜品管理）
+        async function loadCategoriesForMenu() {
+            try {
+                const data = await apiCall('/categories');
+                state.categories = data.data;
+                
+                const categoryFilter = document.getElementById('categoryFilter');
+                if (categoryFilter) {
+                    categoryFilter.innerHTML = '<option value="">全部分类</option>' + 
+                        state.categories.map(category => 
+                            `<option value="${category.id}">${category.name}</option>`
+                        ).join('');
+                }
+                
+            } catch (error) {
+                console.error('加载分类失败:', error);
+            }
+        }
+
+        // 获取状态文本
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': '待确认',
+                'confirmed': '已确认',
+                'preparing': '制作中',
+                'ready': '待上菜',
+                'served': '已上菜',
+                'completed': '已完成',
+                'cancelled': '已取消'
+            };
+            return statusMap[status] || status;
+        }
+
         // 暴露全局函数供HTML调用
         window.showSection = showSection;
         window.showTableModal = showTableModal;
         window.saveTable = saveTable;
         window.closeModal = closeModal;
         window.refreshCurrentSection = refreshCurrentSection;
+        window.saveRestaurantSettings = saveRestaurantSettings;
+        window.viewOrder = viewOrder;
+        window.viewPrintJob = viewPrintJob;
+        window.retryPrintJob = retryPrintJob;
     </script>
 </body>
 </html>

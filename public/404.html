@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>页面未找到 - 404</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css">
+    <style>
+        :root {
+            --primary: #c41d1d;
+            --primary-light: #ff6b6b;
+            --primary-dark: #a81a1a;
+        }
+        
+        body {
+            background-color: #f9fafb;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            border-color: var(--primary-dark);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <!-- 顶部导航 -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <img src="https://paobai.cn/images/LOGO.png" alt="Logo" class="h-8">
+                    <span class="ml-3 text-lg font-semibold text-gray-800">范式转换智能点餐系统</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要内容 -->
+    <main class="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 py-12">
+        <div class="text-center max-w-md w-full">
+            <div class="mx-auto h-32 w-32 text-primary mb-6">
+                <i class="ri-error-warning-line text-[128px]"></i>
+            </div>
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-4">页面未找到</h2>
+            <p class="text-lg text-gray-500 mb-8">
+                抱歉，您访问的页面不存在或已被移除。请检查您输入的网址是否正确，或返回首页重新导航。
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <a href="/" class="btn-primary text-white px-6 py-3 rounded-lg font-medium transition duration-150 ease-in-out">
+                    <i class="ri-home-line mr-2"></i>返回首页
+                </a>
+                <a href="javascript:history.back()" class="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium transition duration-150 ease-in-out hover:bg-gray-50">
+                    <i class="ri-arrow-left-line mr-2"></i>返回上一页
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t mt-auto">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-sm text-gray-500">
+                &copy; 2025 范式转换工作室 - 智能点餐系统
+            </p>
+        </div>
+    </footer>
+</body>
+</html>

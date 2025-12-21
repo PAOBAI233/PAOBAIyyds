@@ -337,6 +337,16 @@ class XpyunService {
       
       for (const job of failedJobs) {
         try {
+          // 检查content是否为有效的JSON
+          if (!job.content || typeof job.content !== 'string') {
+            throw new Error('打印内容为空或格式错误');
+          }
+          
+          // 检查是否为HTML内容（错误数据）
+          if (job.content.trim().startsWith('<')) {
+            throw new Error('打印内容包含HTML格式，无法解析');
+          }
+          
           const content = JSON.parse(job.content);
           const result = await this.printReceipt(content, job.copies);
           
