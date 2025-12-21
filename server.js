@@ -137,6 +137,24 @@ function setupMiddlewareAndRoutes(app, apiRoutes, customerRoutes, kitchenRoutes,
   // Socket.IO客户端文件
   app.use('/socket.io', express.static(path.join(__dirname, 'node_modules/socket.io/client-dist')));
 
+  // API路由配置 - 必须在视图路由之前
+  app.use('/api', (req, res, next) => {
+    console.log(`API请求: ${req.method} ${req.originalUrl}`);
+    next();
+  }, apiRoutes);
+  app.use('/api/customer', (req, res, next) => {
+    console.log(`Customer API请求: ${req.method} ${req.originalUrl}`);
+    next();
+  }, customerRoutes);
+  app.use('/api/kitchen', (req, res, next) => {
+    console.log(`Kitchen API请求: ${req.method} ${req.originalUrl}`);
+    next();
+  }, kitchenRoutes);
+  app.use('/api/admin', (req, res, next) => {
+    console.log(`Admin API请求: ${req.method} ${req.originalUrl}`);
+    next();
+  }, adminRoutes);
+
   // 视图路由 - 使用精确匹配避免与API路由冲突
   app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
@@ -159,17 +177,22 @@ function setupMiddlewareAndRoutes(app, apiRoutes, customerRoutes, kitchenRoutes,
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   });
 
-  // API路由配置
-  app.use('/api', apiRoutes);
-  app.use('/api/customer', customerRoutes);
-  app.use('/api/kitchen', kitchenRoutes);
-  app.use('/api/admin', adminRoutes);
-
-  // 404处理
+  // 404处理 - 必须在所有路由之后
   app.use((req, res) => {
+    // 如果是API请求，返回JSON错误
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({
+        success: false,
+        message: 'API接口不存在',
+        path: req.originalUrl
+      });
+    }
+    
+    // 其他请求返回HTML 404页面
     res.status(404).json({
       success: false,
-      message: '接口不存在'
+      message: '页面不存在',
+      path: req.originalUrl
     });
   });
 
@@ -183,6 +206,12 @@ function setupMiddlewareAndRoutes(app, apiRoutes, customerRoutes, kitchenRoutes,
   });
 
   console.log('✅ 中间件和路由配置完成');
+  
+  // 添加全局请求日志
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.originalUrl} - IP: ${req.ip}`);
+    next();
+  });
 }
 
 // Socket.IO连接处理
