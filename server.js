@@ -80,8 +80,11 @@ function setupMiddlewareAndRoutes(app, apiRoutes, customerRoutes, kitchenRoutes,
       // 允许没有origin的请求（如移动应用、Postman等）
       if (!origin) return callback(null, true);
       
-      // 允许所有localhost和127.0.0.1来源
-      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      // 允许所有localhost和127.0.0.1来源，以及特定测试域名
+      if (origin.includes('localhost') || 
+          origin.includes('127.0.0.1') || 
+          origin.includes('paobai.cn')) {
+        console.log(`CORS自动允许: ${origin}`);
         return callback(null, true);
       }
       
@@ -95,8 +98,10 @@ function setupMiddlewareAndRoutes(app, apiRoutes, customerRoutes, kitchenRoutes,
       ];
       
       if (allowedOrigins.includes(origin)) {
+        console.log(`CORS允许: ${origin}`);
         return callback(null, true);
       } else {
+        console.log(`CORS拒绝: ${origin}`);
         callback(new Error('CORS策略不允许此来源'));
       }
     };
