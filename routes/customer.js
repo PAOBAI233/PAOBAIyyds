@@ -33,7 +33,7 @@ function generateOrderNo() {
 /**
  * 创建订单
  */
-router.post('/api/orders', [
+router.post('/orders', [
   body('session_id').isString().withMessage('会话ID不能为空'),
   body('items').isArray({ min: 1 }).withMessage('菜品列表不能为空'),
   body('items.*.menu_item_id').isInt({ min: 1 }).withMessage('菜品ID必须是正整数'),
@@ -252,7 +252,7 @@ router.post('/api/orders', [
 /**
  * 获取会话订单列表
  */
-router.get('/api/sessions/:sessionId/orders', [
+router.get('/sessions/:sessionId/orders', [
   param('sessionId').isString().withMessage('会话ID不能为空'),
   validatorQuery('status').optional().isIn(['pending', 'confirmed', 'preparing', 'ready', 'served', 'cancelled']).withMessage('状态值无效')
 ], handleValidationErrors, asyncHandler(async (req, res) => {
@@ -422,7 +422,7 @@ router.put('/api/orders/:orderId/status', [
 /**
  * 计算AA制分账
  */
-router.post('/api/sessions/:sessionId/calculate-aa', [
+router.post('/sessions/:sessionId/calculate-aa', [
   param('sessionId').isString().withMessage('会话ID不能为空'),
   body('order_items').isArray().withMessage('订单项目列表不能为空'),
   body('order_items.*.order_item_id').isInt().withMessage('订单项ID必须是整数'),
@@ -521,7 +521,7 @@ router.post('/api/sessions/:sessionId/calculate-aa', [
 /**
  * 创建支付记录
  */
-router.post('/api/payments', [
+router.post('/payments', [
   body('session_id').isString().withMessage('会话ID不能为空'),
   body('diner_openid').isString().withMessage('用户openid不能为空'),
   body('payment_method').isIn(['wechat', 'alipay', 'cash', 'split_aa']).withMessage('支付方式无效'),
@@ -640,7 +640,7 @@ router.post('/api/payments', [
 /**
  * 获取支付记录
  */
-router.get('/api/sessions/:sessionId/payments', [
+router.get('/sessions/:sessionId/payments', [
   param('sessionId').isString().withMessage('会话ID不能为空'),
   validatorQuery('status').optional().isIn(['pending', 'processing', 'success', 'failed', 'refunded']).withMessage('状态值无效')
 ], handleValidationErrors, asyncHandler(async (req, res) => {

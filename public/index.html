@@ -258,13 +258,17 @@
                 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
                     ? '' 
                     : 'http://localhost:3000';
-                const response = await fetch(`${API_BASE_URL}/api${url}`, {
+                const response = await fetch(`${API_BASE_URL}${url}`, {
                     headers: {
                         'Content-Type': 'application/json',
                         ...options.headers
                     },
                     ...options
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
                 const data = await response.json();
                 
@@ -275,7 +279,7 @@
                 return data;
             } catch (error) {
                 console.error('API调用失败:', error);
-                showToast(error.message, 'error');
+                showToast(`网络请求失败: ${error.message}`, 'error');
                 throw error;
             }
         }
@@ -289,7 +293,7 @@
         // 获取桌台信息
         async function loadTableInfo(qrCode) {
             try {
-                const data = await apiCall(`/tables/qr/${qrCode}`);
+                const data = await apiCall(`/api/tables/qr/${qrCode}`);
                 state.currentTable = data.data;
                 elements.tableName.textContent = state.currentTable.table_name || state.currentTable.table_number;
                 return true;
@@ -303,11 +307,11 @@
         async function createOrJoinSession(qrCode) {
             try {
                 // 尝试加入现有会话
-                const tableData = await apiCall(`/tables/qr/${qrCode}`);
+                const tableData = await apiCall(`/api/tables/qr/${qrCode}`);
                 
                 if (tableData.data) {
                     // 如果桌台可用，创建新会话
-                    const sessionData = await apiCall('/sessions', {
+                    const sessionData = await apiCall('/api/sessions', {
                         method: 'POST',
                         body: JSON.stringify({
                             table_id: tableData.data.id,
@@ -337,9 +341,20 @@
         function connectSocket() {
             if (!state.currentSession) return;
             
-            state.socket = io();
+            const socketUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                ? 'http://localhost:3000'
+                : 'http://localhost:3000';
+            state.socket = io(socketUrl);
             
-            state.socket.emit('join_session', state.currentSession.session_id);
+            state.socket.emit('join-room', state.currentSession.session_id);
+            
+            state.socket.on('order_status_update', (data) => {
+                showToast(`订单状态更新: ${data.status}`, 'info');
+            });
+            
+            state.socket.on('payment_status_update', (data) => {
+                showToast(`支付状态更新: ${data.status}`, 'info');
+            });
             
             state.socket.on('order_status_update', (data) => {
                 showToast(`订单状态更新: ${data.status}`, 'info');
@@ -357,7 +372,7 @@
         // 加载分类
         async function loadCategories() {
             try {
-                const data = await apiCall('/menu/categories');
+                const data = await apiCall('/api/menu/categories');
                 state.categories = data.data;
                 renderCategories();
             } catch (error) {
@@ -401,7 +416,7 @@
         // 加载菜品
         async function loadMenuItems(categoryId) {
             try {
-                const data = await apiCall(`/menu/items?category_id=${categoryId}&limit=100`);
+                const data = await apiCall(`/api/menu/items?category_id=${categoryId}&limit=100`);
                 state.menuItems = data.data.items;
                 renderMenuItems();
             } catch (error) {
@@ -566,7 +581,7 @@
                     diner_openid: state.currentUser.openid
                 };
                 
-                const data = await apiCall('/orders', {
+                const data = await apiCall('/api/customer/orders', {
                     method: 'POST',
                     body: JSON.stringify(orderData)
                 });

@@ -1,4 +1,5 @@
 const { NotFoundError } = require('../utils/errors');
+const { validationResult } = require('express-validator');
 const path = require('path');
 
 /**
@@ -78,7 +79,39 @@ function errorHandler(err, req, res, next) {
   });
 }
 
+/**
+ * 处理验证错误的中间件
+ */
+function handleValidationErrors(req, res, next) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const errorMessages = errors.array().map(error => ({
+      field: error.param,
+      message: error.msg,
+      value: error.value
+    }));
+    
+    return res.status(400).json({
+      success: false,
+      message: '请求参数验证失败',
+      errors: errorMessages
+    });
+  }
+  next();
+}
+
+/**
+ * 异步处理包装器
+ */
+function asyncHandler(fn) {
+  return (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}
+
 module.exports = {
   notFoundHandler,
-  errorHandler
+  errorHandler,
+  handleValidationErrors,
+  asyncHandler
 };

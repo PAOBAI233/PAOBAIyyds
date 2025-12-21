@@ -30,7 +30,7 @@ const requireAdmin = (req, res, next) => {
 /**
  * 获取餐厅信息
  */
-router.get('/api/restaurant', requireAdmin, asyncHandler(async (req, res) => {
+router.get('/restaurant', requireAdmin, asyncHandler(async (req, res) => {
   const [restaurant] = await dbQuery('SELECT * FROM restaurants WHERE id = 1');
   
   if (!restaurant) {
@@ -87,7 +87,7 @@ router.put('/api/restaurant', requireAdmin, [
 /**
  * 获取桌台列表
  */
-router.get('/api/tables', requireAdmin, [
+router.get('/tables', requireAdmin, [
   validatorQuery('status').optional().isIn(['available', 'occupied', 'reserved', 'cleaning']).withMessage('状态值无效'),
   validatorQuery('page').optional().isInt({ min: 1 }).withMessage('页码必须是正整数'),
   validatorQuery('limit').optional().isInt({ min: 1, max: 100 }).withMessage('每页数量必须在1-100之间')
@@ -162,7 +162,7 @@ router.get('/api/tables', requireAdmin, [
 /**
  * 创建桌台
  */
-router.post('/api/tables', requireAdmin, [
+router.post('/tables', requireAdmin, [
   body('table_number').isString().trim().isLength({ min: 1, max: 20 }).withMessage('桌台号长度必须在1-20之间'),
   body('table_name').optional().isString().trim().isLength({ max: 50 }).withMessage('桌台名称长度不能超过50字符'),
   body('capacity').isInt({ min: 1, max: 20 }).withMessage('可容纳人数必须在1-20之间'),
@@ -252,7 +252,7 @@ router.put('/api/tables/:id', requireAdmin, [
 /**
  * 获取菜品分类列表
  */
-router.get('/api/categories', requireAdmin, asyncHandler(async (req, res) => {
+router.get('/categories', requireAdmin, asyncHandler(async (req, res) => {
   const categories = await dbQuery(`
     SELECT 
       c.*,
@@ -273,7 +273,7 @@ router.get('/api/categories', requireAdmin, asyncHandler(async (req, res) => {
 /**
  * 创建菜品分类
  */
-router.post('/api/categories', requireAdmin, [
+router.post('/categories', requireAdmin, [
   body('name').isString().trim().isLength({ min: 1, max: 50 }).withMessage('分类名称长度必须在1-50之间'),
   body('description').optional().isString().trim().isLength({ max: 255 }).withMessage('描述长度不能超过255字符'),
   body('sort_order').optional().isInt({ min: 0 }).withMessage('排序顺序必须是非负整数')
@@ -312,7 +312,7 @@ router.post('/api/categories', requireAdmin, [
 /**
  * 获取菜品列表
  */
-router.get('/api/menu-items', requireAdmin, [
+router.get('/menu-items', requireAdmin, [
   validatorQuery('category_id').optional().isInt({ min: 1 }).withMessage('分类ID必须是正整数'),
   validatorQuery('is_available').optional().isBoolean().withMessage('可用状态必须是布尔值'),
   validatorQuery('page').optional().isInt({ min: 1 }).withMessage('页码必须是正整数'),
@@ -395,7 +395,7 @@ router.get('/api/menu-items', requireAdmin, [
 /**
  * 创建菜品
  */
-router.post('/api/menu-items', requireAdmin, [
+router.post('/menu-items', requireAdmin, [
   body('category_id').isInt({ min: 1 }).withMessage('分类ID必须是正整数'),
   body('name').isString().trim().isLength({ min: 1, max: 100 }).withMessage('菜品名称长度必须在1-100之间'),
   body('description').optional().isString().trim().isLength({ max: 255 }).withMessage('描述长度不能超过255字符'),
@@ -568,7 +568,7 @@ router.delete('/api/menu-items/:id', requireAdmin, [
 /**
  * 获取订单统计
  */
-router.get('/api/stats/overview', requireAdmin, [
+router.get('/stats/overview', requireAdmin, [
   validatorQuery('date_from').optional().isDate().withMessage('开始日期格式无效'),
   validatorQuery('date_to').optional().isDate().withMessage('结束日期格式无效')
 ], handleValidationErrors, asyncHandler(async (req, res) => {
@@ -641,7 +641,7 @@ router.get('/api/stats/overview', requireAdmin, [
 /**
  * 获取热销菜品统计
  */
-router.get('/api/stats/popular-items', requireAdmin, [
+router.get('/stats/popular-items', requireAdmin, [
   validatorQuery('limit').optional().isInt({ min: 1, max: 50 }).withMessage('限制数量必须在1-50之间'),
   validatorQuery('date_from').optional().isDate().withMessage('开始日期格式无效'),
   validatorQuery('date_to').optional().isDate().withMessage('结束日期格式无效')
@@ -701,7 +701,7 @@ router.get('/api/stats/popular-items', requireAdmin, [
 /**
  * 获取分类统计
  */
-router.get('/api/stats/categories', requireAdmin, [
+router.get('/stats/categories', requireAdmin, [
   validatorQuery('date_from').optional().isDate().withMessage('开始日期格式无效'),
   validatorQuery('date_to').optional().isDate().withMessage('结束日期格式无效')
 ], handleValidationErrors, asyncHandler(async (req, res) => {
@@ -820,7 +820,7 @@ router.get('/api/print-jobs', requireAdmin, [
 /**
  * 重试打印任务
  */
-router.post('/api/print-jobs/:id/retry', requireAdmin, [
+router.post('/print-jobs/:id/retry', requireAdmin, [
   param('id').isString().withMessage('打印任务ID不能为空')
 ], handleValidationErrors, asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -902,7 +902,7 @@ router.post('/api/print-jobs/:id/retry', requireAdmin, [
 /**
  * 获取订单列表
  */
-router.get('/api/orders', requireAdmin, [
+router.get('/orders', requireAdmin, [
   validatorQuery('status').optional().isIn(['pending', 'confirmed', 'preparing', 'ready', 'served', 'cancelled']).withMessage('状态值无效'),
   validatorQuery('page').optional().isInt({ min: 1 }).withMessage('页码必须是正整数'),
   validatorQuery('limit').optional().isInt({ min: 1, max: 100 }).withMessage('每页数量必须在1-100之间')

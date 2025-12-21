@@ -99,6 +99,9 @@ function setupMiddlewareAndRoutes(app, apiRoutes, customerRoutes, kitchenRoutes,
 
   // 静态文件
   app.use(express.static(path.join(__dirname, 'public')));
+  
+  // Socket.IO客户端文件
+  app.use('/socket.io', express.static(path.join(__dirname, 'node_modules/socket.io/client-dist')));
 
   // 视图路由 - 使用精确匹配避免与API路由冲突
   app.get('/admin', (req, res) => {
@@ -124,11 +127,9 @@ function setupMiddlewareAndRoutes(app, apiRoutes, customerRoutes, kitchenRoutes,
 
   // API路由配置
   app.use('/api', apiRoutes);
-
-  // 注意：视图路由已经处理了根路径，API路由使用不同的路径前缀
-  app.use('/customer', customerRoutes);
-  app.use('/kitchen', kitchenRoutes);
-  app.use('/admin', adminRoutes);
+  app.use('/api/customer', customerRoutes);
+  app.use('/api/kitchen', kitchenRoutes);
+  app.use('/api/admin', adminRoutes);
 
   // 404处理
   app.use((req, res) => {

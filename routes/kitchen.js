@@ -13,7 +13,7 @@ const logger = require('../utils/logger');
 /**
  * 获取待处理订单列表
  */
-router.get('/api/orders', [
+router.get('/orders', [
   validatorQuery('status').optional().isIn(['pending', 'confirmed', 'preparing', 'ready', 'served']).withMessage('状态值无效'),
   validatorQuery('page').optional().isInt({ min: 1 }).withMessage('页码必须是正整数'),
   validatorQuery('limit').optional().isInt({ min: 1, max: 100 }).withMessage('每页数量必须在1-100之间')
@@ -374,7 +374,7 @@ router.put('/api/order-items/:itemId/status', [
 /**
  * 获取菜品分类统计
  */
-router.get('/api/stats/categories', [
+router.get('/stats/categories', [
   validatorQuery('date_from').optional().isDate().withMessage('开始日期格式无效'),
   validatorQuery('date_to').optional().isDate().withMessage('结束日期格式无效')
 ], handleValidationErrors, asyncHandler(async (req, res) => {
@@ -428,7 +428,7 @@ router.get('/api/stats/categories', [
 /**
  * 获取热销菜品
  */
-router.get('/api/stats/popular-items', [
+router.get('/stats/popular-items', [
   validatorQuery('limit').optional().isInt({ min: 1, max: 50 }).withMessage('限制数量必须在1-50之间'),
   validatorQuery('date_from').optional().isDate().withMessage('开始日期格式无效'),
   validatorQuery('date_to').optional().isDate().withMessage('结束日期格式无效')
@@ -493,7 +493,7 @@ router.get('/api/stats/popular-items', [
 /**
  * 获取今日统计
  */
-router.get('/api/stats/today', asyncHandler(async (req, res) => {
+router.get('/stats/today', asyncHandler(async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
   
   // 获取今日订单统计
@@ -562,7 +562,7 @@ router.get('/api/stats/today', asyncHandler(async (req, res) => {
 /**
  * 获取实时监控数据
  */
-router.get('/api/dashboard/realtime', asyncHandler(async (req, res) => {
+router.get('/dashboard/realtime', asyncHandler(async (req, res) => {
   // 获取待处理订单数
   const [pendingOrders] = await dbQuery(`
     SELECT COUNT(*) as count
