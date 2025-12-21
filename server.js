@@ -138,22 +138,10 @@ function setupMiddlewareAndRoutes(app, apiRoutes, customerRoutes, kitchenRoutes,
   app.use('/socket.io', express.static(path.join(__dirname, 'node_modules/socket.io/client-dist')));
 
   // API路由配置 - 必须在视图路由之前
-  app.use('/api', (req, res, next) => {
-    console.log(`API请求: ${req.method} ${req.originalUrl}`);
-    next();
-  }, apiRoutes);
-  app.use('/api/customer', (req, res, next) => {
-    console.log(`Customer API请求: ${req.method} ${req.originalUrl}`);
-    next();
-  }, customerRoutes);
-  app.use('/api/kitchen', (req, res, next) => {
-    console.log(`Kitchen API请求: ${req.method} ${req.originalUrl}`);
-    next();
-  }, kitchenRoutes);
-  app.use('/api/admin', (req, res, next) => {
-    console.log(`Admin API请求: ${req.method} ${req.originalUrl}`);
-    next();
-  }, adminRoutes);
+  app.use('/api', apiRoutes);
+  app.use('/api/customer', customerRoutes);
+  app.use('/api/kitchen', kitchenRoutes);
+  app.use('/api/admin', adminRoutes);
 
   // 视图路由 - 使用精确匹配避免与API路由冲突
   app.get('/admin', (req, res) => {
@@ -207,9 +195,11 @@ function setupMiddlewareAndRoutes(app, apiRoutes, customerRoutes, kitchenRoutes,
 
   console.log('✅ 中间件和路由配置完成');
   
-  // 添加全局请求日志
+  // 添加API请求日志（用于调试）
   app.use((req, res, next) => {
-    console.log(`${req.method} ${req.originalUrl} - IP: ${req.ip}`);
+    if (req.path.startsWith('/api')) {
+      console.log(`API请求: ${req.method} ${req.originalUrl} from ${req.ip}`);
+    }
     next();
   });
 }
