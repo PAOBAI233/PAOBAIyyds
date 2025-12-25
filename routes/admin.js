@@ -49,7 +49,7 @@ router.get('/restaurant', requireAdmin, asyncHandler(async (req, res) => {
 /**
  * 更新餐厅信息
  */
-router.put('/api/restaurant', requireAdmin, [
+router.put('/restaurant', requireAdmin, [
   body('name').optional().isString().trim().isLength({ min: 1, max: 100 }).withMessage('餐厅名称长度必须在1-100之间'),
   body('description').optional().isString().trim().isLength({ max: 500 }).withMessage('描述长度不能超过500字符'),
   body('address').optional().isString().trim().isLength({ min: 1, max: 255 }).withMessage('地址长度必须在1-255之间'),
@@ -204,7 +204,7 @@ router.post('/tables', requireAdmin, [
 /**
  * 更新桌台
  */
-router.put('/api/tables/:id', requireAdmin, [
+router.put('/tables/:id', requireAdmin, [
   param('id').isInt({ min: 1 }).withMessage('桌台ID必须是正整数'),
   body('table_name').optional().isString().trim().isLength({ max: 50 }).withMessage('桌台名称长度不能超过50字符'),
   body('capacity').optional().isInt({ min: 1, max: 20 }).withMessage('可容纳人数必须在1-20之间'),
@@ -463,7 +463,7 @@ router.post('/menu-items', requireAdmin, [
 /**
  * 更新菜品
  */
-router.put('/api/menu-items/:id', requireAdmin, [
+router.put('/menu-items/:id', requireAdmin, [
   param('id').isInt({ min: 1 }).withMessage('菜品ID必须是正整数'),
   body('name').optional().isString().trim().isLength({ min: 1, max: 100 }).withMessage('菜品名称长度必须在1-100之间'),
   body('price').optional().isFloat({ min: 0 }).withMessage('价格必须大于等于0')
@@ -525,7 +525,7 @@ router.put('/api/menu-items/:id', requireAdmin, [
 /**
  * 删除菜品
  */
-router.delete('/api/menu-items/:id', requireAdmin, [
+router.delete('/menu-items/:id', requireAdmin, [
   param('id').isInt({ min: 1 }).withMessage('菜品ID必须是正整数')
 ], handleValidationErrors, asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -754,7 +754,7 @@ router.get('/stats/categories', requireAdmin, [
 /**
  * 获取打印任务历史
  */
-router.get('/api/print-jobs', requireAdmin, [
+router.get('/print-jobs', requireAdmin, [
   validatorQuery('status').optional().isIn(['pending', 'printing', 'success', 'failed']).withMessage('状态值无效'),
   validatorQuery('page').optional().isInt({ min: 1 }).withMessage('页码必须是正整数'),
   validatorQuery('limit').optional().isInt({ min: 1, max: 100 }).withMessage('每页数量必须在1-100之间')

@@ -350,7 +350,7 @@ router.get('/sessions/:sessionId/orders', [
 /**
  * 更新订单状态（用户取消订单）
  */
-router.put('/api/orders/:orderId/status', [
+router.put('/orders/:orderId/status', [
   param('orderId').isString().withMessage('订单ID不能为空'),
   body('status').isIn(['cancelled']).withMessage('只能取消订单'),
   body('reason').optional().isString().withMessage('取消原因必须是字符串')

@@ -141,7 +141,7 @@ router.get('/orders', [
 /**
  * 更新订单状态
  */
-router.put('/api/orders/:orderId/status', [
+router.put('/orders/:orderId/status', [
   param('orderId').isString().withMessage('订单ID不能为空'),
   body('status').isIn(['confirmed', 'preparing', 'ready', 'served', 'cancelled']).withMessage('状态值无效'),
   body('actual_time').optional().isInt({ min: 0 }).withMessage('实际制作时间必须是非负整数'),
@@ -282,7 +282,7 @@ router.put('/api/orders/:orderId/status', [
 /**
  * 更新单个订单项状态
  */
-router.put('/api/order-items/:itemId/status', [
+router.put('/order-items/:itemId/status', [
   param('itemId').isInt({ min: 1 }).withMessage('订单项ID必须是正整数'),
   body('status').isIn(['preparing', 'ready', 'served', 'cancelled']).withMessage('状态值无效')
 ], handleValidationErrors, asyncHandler(async (req, res) => {
