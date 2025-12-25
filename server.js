@@ -182,11 +182,7 @@ function setupMiddlewareAndRoutes(app, apiRoutes, customerRoutes, kitchenRoutes,
     }
     
     // 其他请求返回HTML 404页面
-    res.status(404).json({
-      success: false,
-      message: '页面不存在',
-      path: req.originalUrl
-    });
+    res.status(404).sendFile(path.join(__dirname, '404.html'));
   });
 
   // 错误处理中间件
