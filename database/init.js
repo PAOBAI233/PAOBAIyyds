@@ -164,6 +164,26 @@ async function query(sql, params = []) {
       await initPool();
     }
     
+    // 对于USE语句，使用query而不是execute
+    if (sql.trim().toUpperCase().startsWith('USE ')) {
+      const [rows, fields] = await pool.query(sql, params);
+      return rows;
+    }
+    
+    // 对于多行复杂查询，使用query而不是execute
+    if (sql.trim().includes('\n') && sql.trim().includes(';')) {
+      // 检查是否是复杂查询（多行、CASE语句等）
+      const isComplexQuery = sql.includes('CASE') || 
+                              sql.includes('GROUP BY') || 
+                              sql.includes('DATE(') ||
+                              (sql.split('\n').length > 1 && sql.trim().endsWith(';'));
+      
+      if (isComplexQuery) {
+        const [rows, fields] = await pool.query(sql, params);
+        return rows;
+      }
+    }
+    
     const [rows, fields] = await pool.execute(sql, params);
     return rows;
     
